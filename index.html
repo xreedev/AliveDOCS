@@ -129,9 +129,9 @@ document.getElementById("caption").textContent = CAPTIONS.intro;
 document.getElementById("nextBtn").onclick = () => step(1);
 document.getElementById("prevBtn").onclick = () => step(-1);
 
-// --- Mic: record short chunks, skip silent ones, send the rest to the server ---
-const CHUNK_MS = 3000, SILENCE = 0.04;
-let stream, analyser, listening = false;
+// --- Mic: record while you speak, send as soon as you pause ---
+const SILENCE = 0.04, PAUSE_MS = 450, MAX_MS = 5000, MIN_MS = 300;
+let stream, analyser, listening = false, sent = 0, applied = 0;
 
 async function toggleMic() {
   const btn = document.getElementById("mic");
@@ -141,26 +141,39 @@ async function toggleMic() {
   analyser = ctx.createAnalyser();
   ctx.createMediaStreamSource(stream).connect(analyser);
   listening = true; btn.classList.add("on"); btn.textContent = "⏹ Stop mic";
-  recordChunk();
+  watch();
 }
 
-function recordChunk() {
-  if (!listening) return;
-  const rec = new MediaRecorder(stream), parts = [];
-  let peak = 0;
+// Start recording when the level rises; stop on a short pause (or MAX_MS) and send that phrase.
+function watch() {
   const buf = new Float32Array(analyser.fftSize);
-  const meter = setInterval(() => { analyser.getFloatTimeDomainData(buf); for (const v of buf) peak = Math.max(peak, Math.abs(v)); }, 100);
-  rec.ondataavailable = (e) => parts.push(e.data);
-  rec.onstop = () => { clearInterval(meter); if (peak > SILENCE) send(new Blob(parts, { type: rec.mimeType })); };
-  rec.start();
-  setTimeout(() => { rec.stop(); recordChunk(); }, CHUNK_MS);
+  let rec = null, parts, started, lastLoud;
+  const meter = setInterval(() => {
+    if (!listening) { clearInterval(meter); if (rec) rec.stop(); return; }
+    analyser.getFloatTimeDomainData(buf);
+    let peak = 0; for (const v of buf) peak = Math.max(peak, Math.abs(v));
+    const now = performance.now();
+    if (peak > SILENCE) lastLoud = now;
+    if (!rec && peak > SILENCE) {
+      rec = new MediaRecorder(stream); parts = []; started = now;
+      const r = rec, p = parts;
+      r.ondataavailable = (e) => p.push(e.data);
+      r.onstop = () => { if (r.spoke >= MIN_MS) send(new Blob(p, { type: r.mimeType })); };
+      r.start();
+    } else if (rec && (now - lastLoud > PAUSE_MS || now - started > MAX_MS)) {
+      rec.spoke = lastLoud - started; rec.stop(); rec = null;
+    }
+  }, 50);
 }
 
 async function send(blob) {
+  const id = ++sent;
   const url = `/listen?scene=${scene}&prev=${encodeURIComponent(lastSaid)}`;
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": blob.type }, body: blob });
   const { text, choice, confidence, error } = await res.json();
   if (error) return console.error(error);
+  if (id < applied) return;                   // a newer phrase already moved the scene
+  applied = id;
   if (!text) return;
   lastSaid = text;
   document.getElementById("heard").textContent = `“${text}” → ${choice} (${(confidence ?? 0).toFixed(2)})`;

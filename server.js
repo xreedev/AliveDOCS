@@ -4,7 +4,7 @@ import http from "node:http";
 import fs from "node:fs";
 
 try { process.loadEnvFile(".env"); } catch {}
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const SARVAM_KEY = process.env.SARVAM_API_KEY;
 const JEV_KEY = process.env.TYPESAFE_API_KEY || process.env.JEV_API_KEY;
 const PORT = process.env.PORT || 3000;
 
@@ -20,27 +20,20 @@ const SCENES = {
   principia: "Newton publishes the Principia in 1687, legacy, the end of the story",
 };
 
-// 1) Speech to text with Gemini Transcribe (inline audio).
+// 1) Speech to text with Sarvam (saarika).
 async function transcribe(audio, mimeType) {
-  const res = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent",
-    {
-      method: "POST",
-      headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ inlineData: { mimeType, data: audio.toString("base64") } }] }],
-        generationConfig: {
-          audioTranscriptionConfig: {
-            mode: "SMART",
-            customVocabulary: ["Newton", "Isaac Newton", "Woolsthorpe", "Principia", "gravity", "gravitation", "inverse square"],
-          },
-        },
-      }),
-    }
-  );
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+  const form = new FormData();
+  form.append("file", new Blob([audio], { type: mimeType }), "chunk");
+  form.append("model", "saarika:v2.5");
+  form.append("language_code", "en-IN");
+  const res = await fetch("https://api.sarvam.ai/speech-to-text", {
+    method: "POST",
+    headers: { "api-subscription-key": SARVAM_KEY },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`Sarvam ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("").trim();
+  return (data.transcript || "").trim();
 }
 
 // 2) Jev decides which state the animation should be in, given what was said.

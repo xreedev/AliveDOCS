@@ -3,186 +3,405 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Newton & Gravity</title>
+<title>AliveDOCS · Keynote Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  body { margin: 0; background: #111; color: #eee; font-family: Georgia, serif; text-align: center; }
-  svg { width: 100%; max-width: 900px; height: auto; display: block; margin: 0 auto; }
-  #caption { font-size: 1.3rem; min-height: 3.5em; max-width: 800px; margin: 12px auto; padding: 0 16px; }
-  #bar { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; padding: 0 16px 16px; }
-  button { font-size: 1rem; padding: 10px 18px; border-radius: 24px; border: 0; cursor: pointer; }
-  #mic.on { background: #e53935; color: #fff; }
-  #heard { color: #aaa; font-style: italic; min-height: 1.4em; padding: 0 16px; }
+  :root {
+    --bg: #09090b; --panel: #131316; --panel2: #1b1b1f; --line: #2a2a30;
+    --text: #f5f5f7; --muted: #8e8e96; --accent: #2997ff; --live: #ff453a; --ok: #30d158;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button { font: inherit; color: inherit; cursor: pointer; }
 
-  /* Every scene element is hidden unless the current scene lists it. */
-  svg .el { opacity: 0; transition: opacity 0.8s; }
-  [data-scene=intro] .intro,
-  [data-scene=garden] .day, [data-scene=garden] .tree, [data-scene=garden] .newton, [data-scene=garden] .apple-on,
-  [data-scene=apple] .day, [data-scene=apple] .tree, [data-scene=apple] .newton, [data-scene=apple] .apple-fall,
-  [data-scene=question] .day, [data-scene=question] .tree, [data-scene=question] .newton, [data-scene=question] .apple-ground, [data-scene=question] .thought,
-  [data-scene=moon] .night, [data-scene=moon] .tree, [data-scene=moon] .newton, [data-scene=moon] .moon, [data-scene=moon] .thought2,
-  [data-scene=orbit] .space,
-  [data-scene=law] .law,
-  [data-scene=principia] .book { opacity: 1; }
+  /* ---------- app chrome ---------- */
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
+  .logo { font-weight: 800; font-size: 20px; letter-spacing: -.02em; }
+  .logo b { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 14px; flex: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; background: var(--panel2); font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .pill.live { color: var(--text); } .pill.live i { background: var(--live); animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
 
-  /* Animations run only while their scene is active. */
-  [data-scene=apple] .apple-fall { animation: fall 1.2s cubic-bezier(.5,0,1,1) forwards; }
-  @keyframes fall { to { transform: translateY(215px); } }
-  [data-scene=orbit] .orbiter { animation: spin 6s linear infinite; transform-origin: 450px 250px; }
+  main { display: grid; grid-template-columns: 360px 1fr; gap: 20px; padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: 10px; padding: 4px; }
+  .tabs button { border: 0; background: none; padding: 9px; border-radius: 8px; color: var(--muted); font-weight: 500; }
+  .tabs button.on { background: var(--panel2); color: var(--text); }
+
+  .drop { display: grid; place-items: center; text-align: center; gap: 6px; padding: 28px 16px; border: 1.5px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 14px; cursor: pointer; transition: border-color .2s, background .2s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: rgba(41,151,255,.06); }
+  .drop strong { color: var(--text); font-weight: 600; }
+  video { width: 100%; border-radius: 12px; background: #000; display: block; }
+  .hint { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }
+  .micbtn { width: 96px; height: 96px; border-radius: 50%; border: 0; background: var(--panel2); font-size: 36px; margin: 8px auto; display: block; transition: background .2s, box-shadow .2s; }
+  .micbtn.on { background: var(--live); box-shadow: 0 0 0 10px rgba(255,69,58,.18); }
+  .meter { height: 4px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--ok), var(--accent)); transition: width .08s; }
+
+  h3 { margin: 4px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  #log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 46vh; }
+  #log li { background: var(--panel2); border-radius: 10px; padding: 10px 12px; font-size: 13px; animation: slidein .3s ease-out; }
+  #log q { display: block; color: var(--text); line-height: 1.45; }
+  #log .d { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--muted); font-size: 12px; }
+  #log .d b { color: var(--accent); font-weight: 600; }
+  #log .d .bar { flex: 1; height: 3px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  #log .d .bar i { display: block; height: 100%; background: var(--accent); }
+  #log li.skip .d b { color: var(--muted); } #log li.skip .d .bar i { background: var(--muted); }
+  #log .empty { color: var(--muted); background: none; padding: 0; animation: none; }
+  @keyframes slidein { from { opacity: 0; transform: translateY(-6px); } }
+
+  .stagewrap { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .controls { display: flex; align-items: center; gap: 10px; }
+  .controls button { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; }
+  .controls .where { flex: 1; text-align: center; color: var(--muted); font-size: 14px; }
+  .controls .where b { color: var(--text); font-weight: 600; }
+  .strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .strip button { flex: 0 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--muted); transition: all .25s; }
+  .strip button.on { border-color: var(--accent); color: var(--text); background: rgba(41,151,255,.12); }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; padding: 16px; }
+    header { padding: 12px 16px; flex-wrap: wrap; } .sub { flex-basis: 100%; order: 3; }
+    .stagewrap { order: -1; }
+  }
+
+  /* ---------- the stage: a 16:9 keynote canvas, sized in container units ---------- */
+  .stage { position: relative; aspect-ratio: 16/9; width: 100%; background: #000; border-radius: 16px; overflow: hidden; container-type: inline-size; color: #fff; }
+  .stage:fullscreen { border-radius: 0; }
+  .slide { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity .7s ease; pointer-events: none; }
+  .slide.active { opacity: 1; }
+  .slide .b { opacity: 0; }
+  .slide.active .b { animation: up .9s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--d, 0) * .35s + .15s); }
+  @keyframes up { from { opacity: 0; transform: translateY(2.5cqw); } to { opacity: 1; transform: none; } }
+  .center { text-align: center; }
+  .kicker { font-size: 1.6cqw; letter-spacing: .3em; text-transform: uppercase; color: #86868b; font-weight: 500; }
+  .grad { background: linear-gradient(90deg, #2997ff, #a78bfa 50%, #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .glow { background: radial-gradient(ellipse at 50% 40%, #1c2433 0%, #000 60%); }
+
+  /* 1 welcome */
+  .apple { width: 11cqw; margin: 0 auto 2cqw; filter: drop-shadow(0 0 3cqw rgba(255,255,255,.25)); }
+  .slide.active .apple { animation: logo 1.6s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes logo { from { opacity: 0; transform: scale(.7); filter: blur(10px); } }
+  .huge { font-size: 7.5cqw; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; }
+  .big { font-size: 5.2cqw; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
+  .mid { font-size: 2.6cqw; color: #a1a1a6; font-weight: 400; margin-top: 1.2cqw; }
+
+  /* 2 revolution */
+  .words { font-size: 5cqw; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; max-width: 80cqw; }
+  .words span { display: inline-block; }
+
+  /* 3–4 timeline (Mac → iPod) */
+  .tl { position: absolute; inset: 0; }
+  .tl .axis { position: absolute; left: 10%; right: 10%; top: 72%; height: 2px; background: #333; transform-origin: left; transform: scaleX(0); transition: transform 1.2s cubic-bezier(.2,.7,.2,1); }
+  .slide.active .tl .axis { transform: scaleX(1); }
+  .tl .item { position: absolute; top: 14%; width: 34%; text-align: center; opacity: 0; transform: translateY(3cqw); transition: all 1s cubic-bezier(.2,.7,.2,1); }
+  .tl .item.mac { left: 13%; } .tl .item.ipod { left: 53%; }
+  .tl .dot { position: absolute; top: calc(72% - .7cqw); width: 1.4cqw; height: 1.4cqw; border-radius: 50%; background: #fff; opacity: 0; transition: opacity .6s .6s; }
+  .tl .dot.mac { left: calc(30% - .7cqw); } .tl .dot.ipod { left: calc(70% - .7cqw); }
+  .tl .year { font-size: 4.2cqw; font-weight: 700; margin-top: 1cqw; }
+  .tl .what { font-size: 1.8cqw; color: #a1a1a6; margin-top: .5cqw; }
+  .tl .what b { color: #fff; font-weight: 600; }
+  .tl .item.below { top: auto; bottom: 6%; }
+  [data-slide=mac] .tl .mac, [data-slide=ipod] .tl .mac, [data-slide=ipod] .tl .ipod { opacity: 1; transform: none; }
+  [data-slide=ipod] .tl .item.mac { opacity: .35; }
+  .mac-art { width: 11cqw; height: 13cqw; margin: 0 auto; background: linear-gradient(#e9e3d3, #d8d0bc); border-radius: 1cqw 1cqw .6cqw .6cqw; position: relative; box-shadow: 0 2cqw 4cqw rgba(0,0,0,.5); }
+  .mac-art::before { content: ""; position: absolute; left: 1.4cqw; right: 1.4cqw; top: 1.3cqw; height: 7cqw; background: linear-gradient(135deg, #3c4a3c, #1e261e); border-radius: .5cqw; box-shadow: inset 0 0 1cqw #000; }
+  .mac-art::after { content: ""; position: absolute; left: 6cqw; right: 2cqw; bottom: 2.2cqw; height: .5cqw; background: #b9b09a; border-radius: .2cqw; }
+  .ipod-art { width: 7.5cqw; height: 12.5cqw; margin: .5cqw auto 0; background: linear-gradient(#fafafa, #dcdcdc); border-radius: 1.1cqw; position: relative; box-shadow: 0 2cqw 4cqw rgba(0,0,0,.5); }
+  .ipod-art::before { content: ""; position: absolute; left: .8cqw; right: .8cqw; top: .9cqw; height: 4.6cqw; background: linear-gradient(135deg, #b8c9d9, #7d93a8); border-radius: .3cqw; }
+  .ipod-art::after { content: ""; position: absolute; left: 50%; bottom: 1.1cqw; width: 5cqw; height: 5cqw; margin-left: -2.5cqw; border-radius: 50%; background: radial-gradient(circle, #fff 0 28%, #e2e2e2 29% 100%); border: 1px solid #ccc; }
+
+  /* 5–8 three products */
+  .three-title { position: absolute; top: 9%; width: 100%; text-align: center; }
+  .three-title .big { font-size: 4.2cqw; }
+  .cards { position: absolute; top: 34%; left: 7%; right: 7%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3cqw; }
+  .card { border: 1px solid #2c2c2e; border-radius: 2cqw; padding: 3cqw 2cqw; text-align: center; background: #0d0d0f; transition: all .8s cubic-bezier(.2,.7,.2,1); opacity: .45; }
+  .card .n { font-size: 1.5cqw; color: #6e6e73; letter-spacing: .2em; }
+  .card svg { width: 8cqw; height: 8cqw; margin: 1.5cqw auto; display: block; opacity: 0; transform: scale(.6); transition: all .8s cubic-bezier(.2,.7,.2,1); }
+  .card .t { font-size: 2cqw; font-weight: 600; line-height: 1.25; opacity: 0; transition: opacity .8s .2s; }
+  [data-slide=widescreen] .c1, [data-slide=phone] .c1, [data-slide=phone] .c2, [data-slide=internet] .card { opacity: 1; }
+  [data-slide=widescreen] .c1 :is(svg,.t), [data-slide=phone] :is(.c1,.c2) :is(svg,.t), [data-slide=internet] .card :is(svg,.t) { opacity: 1; transform: none; }
+  [data-slide=widescreen] .c1, [data-slide=phone] .c2, [data-slide=internet] .c3 { border-color: #2997ff; box-shadow: 0 0 5cqw rgba(41,151,255,.25); transform: translateY(-1cqw); }
+
+  /* 9–10 the spin, then one device */
+  .ring { position: absolute; left: 50%; top: 44%; width: 0; height: 0; }
+  .spinner { position: absolute; animation: spin 7s linear infinite; }
+  .orb { position: absolute; width: 11cqw; height: 11cqw; margin: -5.5cqw; border-radius: 2.6cqw; display: grid; place-items: center;
+         transform: rotate(var(--a)) translateX(14cqw) rotate(calc(-1 * var(--a))); transition: transform 1.2s cubic-bezier(.6,0,.2,1), opacity 1s .5s; }
+  .orb svg { width: 7cqw; height: 7cqw; animation: spin 7s linear infinite reverse; }
+  .orb.o1 { background: linear-gradient(135deg, #5ac8fa, #007aff); } .orb.o2 { background: linear-gradient(135deg, #4cd964, #28a745); } .orb.o3 { background: linear-gradient(135deg, #ffcc00, #ff9500); }
   @keyframes spin { to { transform: rotate(360deg); } }
-  [data-scene=orbit] .cannon { stroke-dasharray: 900; stroke-dashoffset: 900; animation: draw 3s ease-out forwards; }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
-  [data-scene=law] .formula { animation: pop 1s ease-out; transform-origin: 450px 220px; }
-  @keyframes pop { from { transform: scale(.3); } }
-  [data-scene=principia] .book rect { animation: rise 1.2s ease-out; }
-  @keyframes rise { from { transform: translateY(80px); } }
-  .intro text { animation: glow 3s ease-in-out infinite alternate; }
-  @keyframes glow { to { opacity: .6; } }
+  [data-slide=one] .orb { transform: rotate(var(--a)) translateX(0) rotate(calc(-1 * var(--a))); opacity: 0; }
+  .spin-cap { position: absolute; bottom: 10%; width: 100%; text-align: center; font-size: 3cqw; font-weight: 600; letter-spacing: -.02em; transition: opacity .5s; }
+  .one-cap { position: absolute; bottom: 10%; width: 100%; text-align: center; opacity: 0; transition: opacity .8s 1s; }
+  [data-slide=one] .spin-cap { opacity: 0; } [data-slide=one] .one-cap { opacity: 1; }
+  .merged { position: absolute; left: 50%; top: 44%; width: 11cqw; height: 20cqw; margin: -10cqw 0 0 -5.5cqw; border: .35cqw solid #fff; border-radius: 2cqw; opacity: 0; transform: scale(.4); transition: all 1s 1s cubic-bezier(.2,.7,.2,1); box-shadow: 0 0 6cqw rgba(41,151,255,.5); }
+  [data-slide=one] .merged { opacity: 1; transform: none; }
+
+  /* 11 iPhone */
+  .reveal { display: flex; align-items: center; gap: 7cqw; }
+  .iphone { width: 17cqw; height: 33cqw; border-radius: 2.8cqw; background: #111; border: .5cqw solid #c7c7cc; position: relative; box-shadow: 0 3cqw 8cqw rgba(41,151,255,.25); }
+  .slide.active .iphone { animation: rise 1.4s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12cqw) rotate(-6deg); } }
+  .iphone .screen { position: absolute; left: 1.1cqw; right: 1.1cqw; top: 4.2cqw; bottom: 4.6cqw; border-radius: .4cqw; background: linear-gradient(160deg, #1d3a5f, #0b1020); display: grid; grid-template-columns: repeat(4, 1fr); gap: .9cqw; padding: 1.2cqw; align-content: start; }
+  .iphone .screen i { aspect-ratio: 1; border-radius: .7cqw; opacity: 0; }
+  .slide.active .iphone .screen i { animation: pop .4s both; animation-delay: calc(1.2s + var(--k) * .06s); }
+  @keyframes pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+  .iphone .home { position: absolute; bottom: 1.1cqw; left: 50%; width: 2.6cqw; height: 2.6cqw; margin-left: -1.3cqw; border-radius: 50%; border: .2cqw solid #444; }
+  .iphone .speaker { position: absolute; top: 1.8cqw; left: 50%; width: 3.4cqw; height: .4cqw; margin-left: -1.7cqw; border-radius: .2cqw; background: #333; }
+  .wordmark { font-size: 9cqw; font-weight: 300; letter-spacing: -.04em; }
+
+  /* 12 reinvent */
+  .underline { height: .5cqw; margin: 1.5cqw auto 0; width: 0; background: linear-gradient(90deg, #2997ff, #f472b6); border-radius: 1cqw; }
+  .slide.active .underline { animation: sweep 1.2s 1.2s cubic-bezier(.2,.7,.2,1) forwards; }
+  @keyframes sweep { to { width: 60%; } }
 </style>
 </head>
-<body data-scene="intro">
-<svg viewBox="0 0 900 500">
-  <!-- backgrounds -->
-  <rect class="el intro" width="900" height="500" fill="#1a1a2e"/>
-  <g class="el intro"><text x="450" y="230" font-size="54" fill="#f5d76e" text-anchor="middle">Newton & Gravity</text>
-    <text x="450" y="290" font-size="22" fill="#ccc" text-anchor="middle">Tell the story — the animation follows your voice</text></g>
-  <g class="el day"><rect width="900" height="500" fill="#8ec9f0"/><circle cx="780" cy="80" r="45" fill="#ffe066"/></g>
-  <g class="el night"><rect width="900" height="500" fill="#0b1433"/>
-    <circle cx="120" cy="60" r="2" fill="#fff"/><circle cx="300" cy="120" r="2" fill="#fff"/><circle cx="520" cy="40" r="2" fill="#fff"/><circle cx="820" cy="200" r="2" fill="#fff"/></g>
-  <rect class="el day night" x="0" y="400" width="900" height="100" fill="#4c8c3a"/>
+<body>
 
-  <!-- tree -->
-  <g class="el tree"><rect x="230" y="220" width="40" height="185" fill="#6b4226"/>
-    <circle cx="250" cy="190" r="110" fill="#2e7d32"/><circle cx="180" cy="220" r="60" fill="#388e3c"/><circle cx="320" cy="220" r="60" fill="#388e3c"/></g>
-  <circle class="el apple-on" cx="330" cy="185" r="12" fill="#d32f2f"/>
-  <circle class="el apple-fall" cx="330" cy="185" r="12" fill="#d32f2f"/>
-  <circle class="el apple-ground" cx="330" cy="400" r="12" fill="#d32f2f"/>
-
-  <!-- Newton sitting against the tree -->
-  <g class="el newton"><circle cx="310" cy="330" r="18" fill="#f1c7a3"/>
-    <path d="M292 318 q18 -22 36 0 v12 h-36z" fill="#eee"/>
-    <rect x="296" y="348" width="28" height="42" rx="6" fill="#3e2723"/>
-    <rect x="320" y="378" width="45" height="12" rx="5" fill="#3e2723"/></g>
-
-  <!-- thought bubbles -->
-  <g class="el thought"><ellipse cx="520" cy="180" rx="170" ry="60" fill="#fff"/><circle cx="380" cy="270" r="10" fill="#fff"/><circle cx="360" cy="300" r="6" fill="#fff"/>
-    <text x="520" y="175" font-size="22" text-anchor="middle" fill="#222">Why straight down?</text>
-    <text x="520" y="205" font-size="22" text-anchor="middle" fill="#222">What pulls it?</text></g>
-  <circle class="el moon" cx="700" cy="110" r="50" fill="#e0e0e0"/>
-  <g class="el thought2"><ellipse cx="520" cy="250" rx="150" ry="45" fill="#fff"/>
-    <text x="520" y="258" font-size="20" text-anchor="middle" fill="#222">Does the pull reach the Moon?</text></g>
-
-  <!-- orbit: Earth, falling Moon, Newton's cannonball -->
-  <g class="el space"><rect width="900" height="500" fill="#050818"/>
-    <circle cx="450" cy="250" r="190" fill="none" stroke="#555" stroke-dasharray="6 6"/>
-    <circle cx="450" cy="250" r="70" fill="#1e88e5"/><path d="M420 210 q20 -10 40 10 q-10 30 -40 10z" fill="#43a047"/>
-    <path class="cannon" d="M450 180 C 560 180, 600 300, 520 340" fill="none" stroke="#ff7043" stroke-width="3"/>
-    <g class="orbiter"><circle cx="640" cy="250" r="22" fill="#e0e0e0"/></g>
-    <text x="450" y="480" font-size="20" fill="#ccc" text-anchor="middle">The Moon is always falling — and always missing</text></g>
-
-  <!-- law -->
-  <g class="el law"><rect width="900" height="500" fill="#1a1a2e"/>
-    <g class="formula"><text x="450" y="235" font-size="72" fill="#f5d76e" text-anchor="middle" font-style="italic">F = G·m₁m₂ / r²</text></g>
-    <circle cx="250" cy="370" r="30" fill="#1e88e5"/><circle cx="650" cy="370" r="18" fill="#e0e0e0"/>
-    <line x1="285" y1="370" x2="627" y2="370" stroke="#f5d76e" stroke-width="2" stroke-dasharray="8 6"/>
-    <text x="450" y="355" font-size="20" fill="#ccc" text-anchor="middle">r</text></g>
-
-  <!-- Principia -->
-  <g class="el book"><rect width="900" height="500" fill="#2b1d0e"/>
-    <rect x="330" y="110" width="240" height="300" rx="8" fill="#7b3f00" stroke="#d4a373" stroke-width="4"/>
-    <text x="450" y="210" font-size="26" fill="#f5d76e" text-anchor="middle">PHILOSOPHIÆ</text>
-    <text x="450" y="245" font-size="26" fill="#f5d76e" text-anchor="middle">NATURALIS</text>
-    <text x="450" y="280" font-size="26" fill="#f5d76e" text-anchor="middle">PRINCIPIA</text>
-    <text x="450" y="340" font-size="22" fill="#d4a373" text-anchor="middle">1687</text></g>
+<!-- reusable icons -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-ipod" viewBox="0 0 64 64"><rect x="16" y="4" width="32" height="56" rx="6" fill="none" stroke="currentColor" stroke-width="3.5"/><rect x="21" y="10" width="22" height="18" rx="2" fill="currentColor" opacity=".9"/><circle cx="32" cy="44" r="9" fill="none" stroke="currentColor" stroke-width="3.5"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 64 64"><path fill="currentColor" d="M22.6 8.8c1.2-.9 2.9-.7 3.9.5l5.6 7c.9 1.1.9 2.7 0 3.8l-3.4 4.2c2.4 5.2 6.3 9.3 11.4 11.9l4.3-3.3c1.1-.9 2.7-.9 3.8 0l7 5.6c1.2 1 1.4 2.7.5 3.9l-3.5 4.6c-1.6 2.1-4.3 3-6.8 2.3C29.8 45.3 18.7 34.2 14.7 18.6c-.7-2.5.2-5.2 2.3-6.8z"/></symbol>
+  <symbol id="i-web" viewBox="0 0 64 64"><circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M42 22 35 35 22 42 29 29z" fill="currentColor"/><circle cx="32" cy="32" r="2.5" fill="#000"/></symbol>
 </svg>
 
-<p id="caption"></p>
-<div id="bar">
-  <button id="mic">🎤 Start mic</button>
-  <button id="prevBtn">◀</button><button id="nextBtn">▶</button>
-</div>
-<p id="heard"></p>
+<header>
+  <div class="logo">Alive<b>DOCS</b></div>
+  <div class="sub">Demo · Macworld 2007 — what if Steve's slides simply followed his voice? No clicker, no cue sheet.</div>
+  <div class="pill" id="status"><i></i><span>Idle</span></div>
+</header>
 
-<script>
-const ORDER = ["intro", "garden", "apple", "question", "moon", "orbit", "law", "principia"];
-const CAPTIONS = {
-  intro: "Say something like “Let me tell you how Newton discovered gravity…”",
-  garden: "1666. Plague closes Cambridge, and young Isaac Newton returns home to Woolsthorpe.",
-  apple: "An apple falls from the tree.",
-  question: "Why does it always fall straight down — never sideways, never up?",
-  moon: "If the Earth pulls the apple… could the same pull reach all the way to the Moon?",
-  orbit: "The Moon is falling too — it just moves sideways so fast that it keeps missing the Earth.",
-  law: "Every mass pulls every other mass, weaker with the square of the distance.",
-  principia: "In 1687 Newton publishes the Principia — and the universe finally has rules.",
+<main>
+  <aside class="panel">
+    <div class="tabs">
+      <button class="on" data-tab="video">🎬 Video</button>
+      <button data-tab="mic">🎤 Live mic</button>
+    </div>
+
+    <div id="pane-video">
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="video/*,audio/*" hidden>
+        <strong>Upload the keynote clip</strong>
+        <span>Drop a video here or click to browse</span>
+      </label>
+      <video id="video" controls playsinline hidden></video>
+    </div>
+    <div id="pane-mic" hidden>
+      <button class="micbtn" id="mic" aria-label="Start microphone">🎤</button>
+      <p class="hint center">Present it yourself — talk like you're on stage.</p>
+    </div>
+
+    <div class="meter"><i id="level"></i></div>
+    <p class="hint">AliveDOCS turns each phrase into text (Sarvam), then Jev picks the slide that matches what was said — no fixed keywords.</p>
+
+    <h3>Live decisions</h3>
+    <ol id="log"><li class="empty">Press play or start the mic — every phrase and the slide it triggered will show up here.</li></ol>
+  </aside>
+
+  <section class="stagewrap">
+    <div class="stage" id="stage" data-slide="welcome">
+
+      <section class="slide glow" data-for="welcome"><div class="center">
+        <svg class="apple" viewBox="0 0 100 120"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5f5f7"/><stop offset="1" stop-color="#8e8e93"/></linearGradient></defs>
+          <path fill="url(#ag)" d="M50 32c-8-6-26-9-36 5-10 14-6 42 8 60 7 9 13 12 20 9 5-2 11-2 16 0 7 3 13 0 20-9 6-8 10-17 11-25-12-5-15-22-4-31-6-8-15-11-23-8-5 2-8 2-12-1z"/>
+          <path fill="url(#ag)" d="M52 26c0-10 7-19 17-21 1 11-7 20-17 21z"/></svg>
+        <div class="kicker b" style="--d:1">Macworld · January 9, 2007</div>
+        <div class="huge b" style="--d:2">Two and a half years<br><span class="grad">in the making.</span></div>
+      </div></section>
+
+      <section class="slide" data-for="revolution"><div class="center words">
+        <span class="b" style="--d:0">Every once in a while,</span>
+        <span class="b" style="--d:1">a revolutionary product</span>
+        <span class="b" style="--d:2">comes along that</span>
+        <span class="b grad" style="--d:3">changes everything.</span>
+      </div></section>
+
+      <section class="slide" data-for="mac ipod"><div class="tl">
+        <div class="axis"></div><span class="dot mac"></span><span class="dot ipod"></span>
+        <div class="item mac"><div class="mac-art"></div><div class="year">1984</div><div class="what"><b>Macintosh</b> changed the whole computer industry</div></div>
+        <div class="item ipod"><div class="ipod-art"></div><div class="year">2001</div><div class="what"><b>iPod</b> changed the entire music industry</div></div>
+        <style>[data-slide=mac] .tl .dot.mac, [data-slide=ipod] .tl .dot { opacity: 1; }</style>
+      </div></section>
+
+      <section class="slide" data-for="three widescreen phone internet">
+        <div class="three-title"><div class="kicker">Today</div><div class="big">Three revolutionary products</div></div>
+        <div class="cards">
+          <div class="card c1"><div class="n">ONE</div><svg style="color:#5ac8fa"><use href="#i-ipod"/></svg><div class="t">Widescreen iPod<br>with touch controls</div></div>
+          <div class="card c2"><div class="n">TWO</div><svg style="color:#4cd964"><use href="#i-phone"/></svg><div class="t">Revolutionary<br>mobile phone</div></div>
+          <div class="card c3"><div class="n">THREE</div><svg style="color:#ffcc00"><use href="#i-web"/></svg><div class="t">Breakthrough Internet<br>communications device</div></div>
+        </div>
+      </section>
+
+      <section class="slide" data-for="spin one">
+        <div class="ring"><div class="spinner">
+          <div class="orb o1" style="--a:-90deg"><svg style="color:#fff"><use href="#i-ipod"/></svg></div>
+          <div class="orb o2" style="--a:30deg"><svg style="color:#fff"><use href="#i-phone"/></svg></div>
+          <div class="orb o3" style="--a:150deg"><svg style="color:#fff"><use href="#i-web"/></svg></div>
+        </div></div>
+        <div class="merged"></div>
+        <div class="spin-cap">An iPod. A phone. An Internet communicator.</div>
+        <div class="one-cap"><div class="kicker">Are you getting it?</div><div class="big">This is <span class="grad">one device.</span></div></div>
+      </section>
+
+      <section class="slide glow" data-for="iphone"><div class="reveal">
+        <div class="iphone"><span class="speaker"></span><div class="screen" id="apps"></div><span class="home"></span></div>
+        <div><div class="kicker b" style="--d:1">And we are calling it</div><div class="wordmark b" style="--d:2">iPhone</div></div>
+      </div></section>
+
+      <section class="slide" data-for="reinvent"><div class="center">
+        <div class="mid b" style="--d:0">Today, Apple is going to</div>
+        <div class="huge b" style="--d:1">reinvent <span class="grad">the phone.</span></div>
+        <div class="underline"></div>
+      </div></section>
+    </div>
+
+    <div class="controls">
+      <button id="prev" aria-label="Previous slide">◀</button>
+      <div class="where" id="where"></div>
+      <button id="next" aria-label="Next slide">▶</button>
+      <button id="full" aria-label="Fullscreen">⛶</button>
+    </div>
+    <div class="strip" id="strip"></div>
+  </section>
+</main>
+
+<script type="module">
+import { listen } from "./alive.js";
+
+// Slide ids → what the speaker says there. Jev matches speech against these descriptions.
+const TITLE = "Steve Jobs introducing the iPhone at Macworld 2007";
+const SLIDES = {
+  welcome:    ["Welcome",      "Opening: this is a day he has been looking forward to for two and a half years"],
+  revolution: ["Revolution",   "Every once in a while a revolutionary product comes along that changes everything; fortunate to work on one in a career; Apple has introduced a few"],
+  mac:        ["Macintosh",    "1984, Apple introduced the Macintosh, it changed Apple and the whole computer industry"],
+  ipod:       ["iPod",         "2001, the first iPod, changed the way we listen to music and the entire music industry"],
+  three:      ["Three",        "Today introducing three revolutionary products of this class"],
+  widescreen: ["Widescreen iPod", "The first one is a widescreen iPod with touch controls"],
+  phone:      ["Mobile phone", "The second is a revolutionary mobile phone"],
+  internet:   ["Internet",     "The third is a breakthrough internet communications device"],
+  spin:       ["iPod · Phone · Internet", "Listing the three together: an iPod, a phone, and an internet communicator, repeated"],
+  one:        ["One device",   "Are you getting it? These are not three separate devices, this is one device"],
+  iphone:     ["iPhone",       "And we are calling it iPhone, the name reveal"],
+  reinvent:   ["Reinvent",     "Today Apple is going to reinvent the phone"],
 };
-let scene = "intro", lastSaid = "";
+const ORDER = Object.keys(SLIDES);
+const DESCRIPTIONS = Object.fromEntries(ORDER.map((id) => [id, SLIDES[id][1]]));
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+let current = "welcome";
 
-function show(name) {
-  if (!ORDER.includes(name) || name === scene) return;
-  scene = name;
-  document.body.dataset.scene = "";           // reset so CSS animations replay
-  void document.body.offsetWidth;
-  document.body.dataset.scene = name;
-  document.getElementById("caption").textContent = CAPTIONS[name];
+// app icons on the iPhone screen
+const COLORS = ["#34c759", "#5ac8fa", "#ff9500", "#ff2d55", "#af52de", "#ffcc00", "#007aff", "#ff3b30", "#30b0c7", "#a2845e", "#5856d6", "#64d2ff"];
+$("apps").innerHTML = COLORS.map((c, k) => `<i style="background:${c};--k:${k}"></i>`).join("");
+
+// ---------- slides ----------
+$("strip").innerHTML = ORDER.map((id, i) => `<button data-id="${id}">${i + 1}. ${SLIDES[id][0]}</button>`).join("");
+$("strip").onclick = (e) => e.target.dataset.id && show(e.target.dataset.id);
+
+function show(id) {
+  if (!SLIDES[id]) return;
+  current = id;
+  stage.dataset.slide = id;
+  for (const s of stage.querySelectorAll(".slide")) s.classList.toggle("active", s.dataset.for.split(" ").includes(id));
+  for (const b of $("strip").children) b.classList.toggle("on", b.dataset.id === id);
+  $("strip").querySelector(".on").scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  $("where").innerHTML = `<b>${SLIDES[id][0]}</b> · ${ORDER.indexOf(id) + 1} / ${ORDER.length}`;
 }
-const step = (d) => show(ORDER[Math.max(0, Math.min(ORDER.length - 1, ORDER.indexOf(scene) + d))]);
-document.getElementById("caption").textContent = CAPTIONS.intro;
-document.getElementById("nextBtn").onclick = () => step(1);
-document.getElementById("prevBtn").onclick = () => step(-1);
+const step = (d) => show(ORDER[Math.max(0, Math.min(ORDER.length - 1, ORDER.indexOf(current) + d))]);
+$("prev").onclick = () => step(-1);
+$("next").onclick = () => step(1);
+$("full").onclick = () => stage.requestFullscreen?.();
+addEventListener("keydown", (e) => { if (e.key === "ArrowRight") step(1); if (e.key === "ArrowLeft") step(-1); });
+show("welcome");
 
-// --- Mic: record while you speak, send as soon as you pause ---
-const SILENCE = 0.04, PAUSE_MS = 450, MAX_MS = 5000, MIN_MS = 300;
-let stream, analyser, listening = false, sent = 0, applied = 0;
-
-async function toggleMic() {
-  const btn = document.getElementById("mic");
-  if (listening) { listening = false; btn.classList.remove("on"); btn.textContent = "🎤 Start mic"; stream.getTracks().forEach((t) => t.stop()); return; }
-  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const ctx = new AudioContext();
-  analyser = ctx.createAnalyser();
-  ctx.createMediaStreamSource(stream).connect(analyser);
-  listening = true; btn.classList.add("on"); btn.textContent = "⏹ Stop mic";
-  watch();
-}
-
-// Start recording when the level rises; stop on a short pause (or MAX_MS) and send that phrase.
-function watch() {
-  const buf = new Float32Array(analyser.fftSize);
-  let rec = null, parts, started, lastLoud;
-  const meter = setInterval(() => {
-    if (!listening) { clearInterval(meter); if (rec) rec.stop(); return; }
-    analyser.getFloatTimeDomainData(buf);
-    let peak = 0; for (const v of buf) peak = Math.max(peak, Math.abs(v));
-    const now = performance.now();
-    if (peak > SILENCE) lastLoud = now;
-    if (!rec && peak > SILENCE) {
-      rec = new MediaRecorder(stream); parts = []; started = now;
-      const r = rec, p = parts;
-      r.ondataavailable = (e) => p.push(e.data);
-      r.onstop = () => { if (r.spoke >= MIN_MS) send(new Blob(p, { type: r.mimeType })); };
-      r.start();
-    } else if (rec && (now - lastLoud > PAUSE_MS || now - started > MAX_MS)) {
-      rec.spoke = lastLoud - started; rec.stop(); rec = null;
-    }
-  }, 50);
-}
-
-async function send(blob) {
-  const id = ++sent;
-  const url = `/listen?scene=${scene}&prev=${encodeURIComponent(lastSaid)}`;
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": blob.type }, body: blob });
-  const { text, choice, confidence, error } = await res.json();
+// ---------- decisions from speech ----------
+function onResult({ text, choice, confidence = 0, error }) {
   if (error) return console.error(error);
-  if (id < applied) return;                   // a newer phrase already moved the scene
-  applied = id;
   if (!text) return;
-  lastSaid = text;
-  document.getElementById("heard").textContent = `“${text}” → ${choice} (${(confidence ?? 0).toFixed(2)})`;
-  if (confidence < 0.5) return;               // Jev isn't sure: stay put
-  if (choice === "next") step(1);
-  else if (choice === "back") step(-1);
-  else show(choice);                          // "none" or current scene is ignored by show()
+  const acted = confidence >= 0.5 && choice !== "none";  // Jev isn't sure → stay put
+  if (acted) choice === "next" ? step(1) : choice === "back" ? step(-1) : show(choice);
+  const label = acted ? `→ ${SLIDES[current][0]}` : "stayed";
+  $("log").querySelector(".empty")?.remove();
+  $("log").insertAdjacentHTML("afterbegin",
+    `<li class="${acted ? "" : "skip"}"><q></q><div class="d"><b>${label}</b><span class="bar"><i style="width:${Math.round(confidence * 100)}%"></i></span>${confidence.toFixed(2)}</div></li>`);
+  $("log").firstElementChild.querySelector("q").textContent = text;
+  while ($("log").children.length > 40) $("log").lastElementChild.remove();
 }
-document.getElementById("mic").onclick = toggleMic;
+const deck = () => ({ title: TITLE, scenes: DESCRIPTIONS, current });
+const onLevel = (p) => ($("level").style.width = Math.min(100, p * 250) + "%");
+
+function setStatus(text) {
+  $("status").classList.toggle("live", !!text);
+  $("status").querySelector("span").textContent = text || "Idle";
+}
+
+// ---------- source: uploaded video (its soundtrack is the "speaker") ----------
+const video = $("video");
+let ctx, videoTap, stopVideo;
+
+function loadVideo(file) {
+  if (!file) return;
+  video.src = URL.createObjectURL(file);
+  video.hidden = false;
+  $("drop").hidden = true;
+}
+$("file").onchange = (e) => loadVideo(e.target.files[0]);
+$("drop").ondragover = (e) => { e.preventDefault(); $("drop").classList.add("over"); };
+$("drop").ondragleave = () => $("drop").classList.remove("over");
+$("drop").ondrop = (e) => { e.preventDefault(); $("drop").classList.remove("over"); loadVideo(e.dataTransfer.files[0]); };
+
+video.onplay = async () => {
+  ctx ??= new AudioContext();
+  await ctx.resume();
+  if (!videoTap) {                            // route video audio → speakers + analyser + recorder
+    const src = ctx.createMediaElementSource(video);
+    const analyser = ctx.createAnalyser(), dest = ctx.createMediaStreamDestination();
+    src.connect(ctx.destination); src.connect(analyser); src.connect(dest);
+    videoTap = { stream: dest.stream, analyser };
+  }
+  if (video.currentTime < 1) show("welcome");
+  stopMic();
+  stopVideo?.();
+  stopVideo = listen(videoTap.stream, videoTap.analyser, { deck, onResult, onLevel });
+  setStatus("Listening · Video");
+};
+video.onpause = video.onended = () => { stopVideo?.(); stopVideo = null; onLevel(0); setStatus(); };
+
+// ---------- source: live microphone ----------
+let micStream, stopMicListen;
+function stopMic() {
+  if (!stopMicListen) return;
+  stopMicListen(); stopMicListen = null;
+  micStream.getTracks().forEach((t) => t.stop());
+  $("mic").classList.remove("on"); onLevel(0); setStatus();
+}
+$("mic").onclick = async () => {
+  if (stopMicListen) return stopMic();
+  video.pause();
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  ctx ??= new AudioContext();
+  await ctx.resume();
+  const analyser = ctx.createAnalyser();
+  ctx.createMediaStreamSource(micStream).connect(analyser);
+  stopMicListen = listen(micStream, analyser, { deck, onResult, onLevel });
+  $("mic").classList.add("on");
+  setStatus("Listening · Mic");
+};
+
+// ---------- tabs ----------
+document.querySelector(".tabs").onclick = (e) => {
+  const tab = e.target.dataset.tab;
+  if (!tab) return;
+  for (const b of document.querySelectorAll(".tabs button")) b.classList.toggle("on", b === e.target);
+  $("pane-video").hidden = tab !== "video";
+  $("pane-mic").hidden = tab !== "mic";
+  if (tab === "video") stopMic(); else video.pause();
+};
 </script>
 </body>
 </html>

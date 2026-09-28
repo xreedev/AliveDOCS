@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newton & Gravity</title>
+<style>
+  body { margin: 0; background: #111; color: #eee; font-family: Georgia, serif; text-align: center; }
+  svg { width: 100%; max-width: 900px; height: auto; display: block; margin: 0 auto; }
+  #caption { font-size: 1.3rem; min-height: 3.5em; max-width: 800px; margin: 12px auto; padding: 0 16px; }
+  #bar { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; padding: 0 16px 16px; }
+  button { font-size: 1rem; padding: 10px 18px; border-radius: 24px; border: 0; cursor: pointer; }
+  #mic.on { background: #e53935; color: #fff; }
+  #heard { color: #aaa; font-style: italic; min-height: 1.4em; padding: 0 16px; }
+
+  /* Every scene element is hidden unless the current scene lists it. */
+  svg .el { opacity: 0; transition: opacity 0.8s; }
+  [data-scene=intro] .intro,
+  [data-scene=garden] .day, [data-scene=garden] .tree, [data-scene=garden] .newton, [data-scene=garden] .apple-on,
+  [data-scene=apple] .day, [data-scene=apple] .tree, [data-scene=apple] .newton, [data-scene=apple] .apple-fall,
+  [data-scene=question] .day, [data-scene=question] .tree, [data-scene=question] .newton, [data-scene=question] .apple-ground, [data-scene=question] .thought,
+  [data-scene=moon] .night, [data-scene=moon] .tree, [data-scene=moon] .newton, [data-scene=moon] .moon, [data-scene=moon] .thought2,
+  [data-scene=orbit] .space,
+  [data-scene=law] .law,
+  [data-scene=principia] .book { opacity: 1; }
+
+  /* Animations run only while their scene is active. */
+  [data-scene=apple] .apple-fall { animation: fall 1.2s cubic-bezier(.5,0,1,1) forwards; }
+  @keyframes fall { to { transform: translateY(215px); } }
+  [data-scene=orbit] .orbiter { animation: spin 6s linear infinite; transform-origin: 450px 250px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  [data-scene=orbit] .cannon { stroke-dasharray: 900; stroke-dashoffset: 900; animation: draw 3s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  [data-scene=law] .formula { animation: pop 1s ease-out; transform-origin: 450px 220px; }
+  @keyframes pop { from { transform: scale(.3); } }
+  [data-scene=principia] .book rect { animation: rise 1.2s ease-out; }
+  @keyframes rise { from { transform: translateY(80px); } }
+  .intro text { animation: glow 3s ease-in-out infinite alternate; }
+  @keyframes glow { to { opacity: .6; } }
+</style>
+</head>
+<body data-scene="intro">
+<svg viewBox="0 0 900 500">
+  <!-- backgrounds -->
+  <rect class="el intro" width="900" height="500" fill="#1a1a2e"/>
+  <g class="el intro"><text x="450" y="230" font-size="54" fill="#f5d76e" text-anchor="middle">Newton & Gravity</text>
+    <text x="450" y="290" font-size="22" fill="#ccc" text-anchor="middle">Tell the story — the animation follows your voice</text></g>
+  <g class="el day"><rect width="900" height="500" fill="#8ec9f0"/><circle cx="780" cy="80" r="45" fill="#ffe066"/></g>
+  <g class="el night"><rect width="900" height="500" fill="#0b1433"/>
+    <circle cx="120" cy="60" r="2" fill="#fff"/><circle cx="300" cy="120" r="2" fill="#fff"/><circle cx="520" cy="40" r="2" fill="#fff"/><circle cx="820" cy="200" r="2" fill="#fff"/></g>
+  <rect class="el day night" x="0" y="400" width="900" height="100" fill="#4c8c3a"/>
+
+  <!-- tree -->
+  <g class="el tree"><rect x="230" y="220" width="40" height="185" fill="#6b4226"/>
+    <circle cx="250" cy="190" r="110" fill="#2e7d32"/><circle cx="180" cy="220" r="60" fill="#388e3c"/><circle cx="320" cy="220" r="60" fill="#388e3c"/></g>
+  <circle class="el apple-on" cx="330" cy="185" r="12" fill="#d32f2f"/>
+  <circle class="el apple-fall" cx="330" cy="185" r="12" fill="#d32f2f"/>
+  <circle class="el apple-ground" cx="330" cy="400" r="12" fill="#d32f2f"/>
+
+  <!-- Newton sitting against the tree -->
+  <g class="el newton"><circle cx="310" cy="330" r="18" fill="#f1c7a3"/>
+    <path d="M292 318 q18 -22 36 0 v12 h-36z" fill="#eee"/>
+    <rect x="296" y="348" width="28" height="42" rx="6" fill="#3e2723"/>
+    <rect x="320" y="378" width="45" height="12" rx="5" fill="#3e2723"/></g>
+
+  <!-- thought bubbles -->
+  <g class="el thought"><ellipse cx="520" cy="180" rx="170" ry="60" fill="#fff"/><circle cx="380" cy="270" r="10" fill="#fff"/><circle cx="360" cy="300" r="6" fill="#fff"/>
+    <text x="520" y="175" font-size="22" text-anchor="middle" fill="#222">Why straight down?</text>
+    <text x="520" y="205" font-size="22" text-anchor="middle" fill="#222">What pulls it?</text></g>
+  <circle class="el moon" cx="700" cy="110" r="50" fill="#e0e0e0"/>
+  <g class="el thought2"><ellipse cx="520" cy="250" rx="150" ry="45" fill="#fff"/>
+    <text x="520" y="258" font-size="20" text-anchor="middle" fill="#222">Does the pull reach the Moon?</text></g>
+
+  <!-- orbit: Earth, falling Moon, Newton's cannonball -->
+  <g class="el space"><rect width="900" height="500" fill="#050818"/>
+    <circle cx="450" cy="250" r="190" fill="none" stroke="#555" stroke-dasharray="6 6"/>
+    <circle cx="450" cy="250" r="70" fill="#1e88e5"/><path d="M420 210 q20 -10 40 10 q-10 30 -40 10z" fill="#43a047"/>
+    <path class="cannon" d="M450 180 C 560 180, 600 300, 520 340" fill="none" stroke="#ff7043" stroke-width="3"/>
+    <g class="orbiter"><circle cx="640" cy="250" r="22" fill="#e0e0e0"/></g>
+    <text x="450" y="480" font-size="20" fill="#ccc" text-anchor="middle">The Moon is always falling — and always missing</text></g>
+
+  <!-- law -->
+  <g class="el law"><rect width="900" height="500" fill="#1a1a2e"/>
+    <g class="formula"><text x="450" y="235" font-size="72" fill="#f5d76e" text-anchor="middle" font-style="italic">F = G·m₁m₂ / r²</text></g>
+    <circle cx="250" cy="370" r="30" fill="#1e88e5"/><circle cx="650" cy="370" r="18" fill="#e0e0e0"/>
+    <line x1="285" y1="370" x2="627" y2="370" stroke="#f5d76e" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="450" y="355" font-size="20" fill="#ccc" text-anchor="middle">r</text></g>
+
+  <!-- Principia -->
+  <g class="el book"><rect width="900" height="500" fill="#2b1d0e"/>
+    <rect x="330" y="110" width="240" height="300" rx="8" fill="#7b3f00" stroke="#d4a373" stroke-width="4"/>
+    <text x="450" y="210" font-size="26" fill="#f5d76e" text-anchor="middle">PHILOSOPHIÆ</text>
+    <text x="450" y="245" font-size="26" fill="#f5d76e" text-anchor="middle">NATURALIS</text>
+    <text x="450" y="280" font-size="26" fill="#f5d76e" text-anchor="middle">PRINCIPIA</text>
+    <text x="450" y="340" font-size="22" fill="#d4a373" text-anchor="middle">1687</text></g>
+</svg>
+
+<p id="caption"></p>
+<div id="bar">
+  <button id="mic">🎤 Start mic</button>
+  <button id="prevBtn">◀</button><button id="nextBtn">▶</button>
+</div>
+<p id="heard"></p>
+
+<script>
+const ORDER = ["intro", "garden", "apple", "question", "moon", "orbit", "law", "principia"];
+const CAPTIONS = {
+  intro: "Say something like “Let me tell you how Newton discovered gravity…”",
+  garden: "1666. Plague closes Cambridge, and young Isaac Newton returns home to Woolsthorpe.",
+  apple: "An apple falls from the tree.",
+  question: "Why does it always fall straight down — never sideways, never up?",
+  moon: "If the Earth pulls the apple… could the same pull reach all the way to the Moon?",
+  orbit: "The Moon is falling too — it just moves sideways so fast that it keeps missing the Earth.",
+  law: "Every mass pulls every other mass, weaker with the square of the distance.",
+  principia: "In 1687 Newton publishes the Principia — and the universe finally has rules.",
+};
+let scene = "intro", lastSaid = "";
+
+function show(name) {
+  if (!ORDER.includes(name) || name === scene) return;
+  scene = name;
+  document.body.dataset.scene = "";           // reset so CSS animations replay
+  void document.body.offsetWidth;
+  document.body.dataset.scene = name;
+  document.getElementById("caption").textContent = CAPTIONS[name];
+}
+const step = (d) => show(ORDER[Math.max(0, Math.min(ORDER.length - 1, ORDER.indexOf(scene) + d))]);
+document.getElementById("caption").textContent = CAPTIONS.intro;
+document.getElementById("nextBtn").onclick = () => step(1);
+document.getElementById("prevBtn").onclick = () => step(-1);
+
+// --- Mic: record short chunks, skip silent ones, send the rest to the server ---
+const CHUNK_MS = 3000, SILENCE = 0.04;
+let stream, analyser, listening = false;
+
+async function toggleMic() {
+  const btn = document.getElementById("mic");
+  if (listening) { listening = false; btn.classList.remove("on"); btn.textContent = "🎤 Start mic"; stream.getTracks().forEach((t) => t.stop()); return; }
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const ctx = new AudioContext();
+  analyser = ctx.createAnalyser();
+  ctx.createMediaStreamSource(stream).connect(analyser);
+  listening = true; btn.classList.add("on"); btn.textContent = "⏹ Stop mic";
+  recordChunk();
+}
+
+function recordChunk() {
+  if (!listening) return;
+  const rec = new MediaRecorder(stream), parts = [];
+  let peak = 0;
+  const buf = new Float32Array(analyser.fftSize);
+  const meter = setInterval(() => { analyser.getFloatTimeDomainData(buf); for (const v of buf) peak = Math.max(peak, Math.abs(v)); }, 100);
+  rec.ondataavailable = (e) => parts.push(e.data);
+  rec.onstop = () => { clearInterval(meter); if (peak > SILENCE) send(new Blob(parts, { type: rec.mimeType })); };
+  rec.start();
+  setTimeout(() => { rec.stop(); recordChunk(); }, CHUNK_MS);
+}
+
+async function send(blob) {
+  const url = `/listen?scene=${scene}&prev=${encodeURIComponent(lastSaid)}`;
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": blob.type }, body: blob });
+  const { text, choice, confidence, error } = await res.json();
+  if (error) return console.error(error);
+  if (!text) return;
+  lastSaid = text;
+  document.getElementById("heard").textContent = `“${text}” → ${choice} (${(confidence ?? 0).toFixed(2)})`;
+  if (confidence < 0.5) return;               // Jev isn't sure: stay put
+  if (choice === "next") step(1);
+  else if (choice === "back") step(-1);
+  else show(choice);                          // "none" or current scene is ignored by show()
+}
+document.getElementById("mic").onclick = toggleMic;
+</script>
+</body>
+</html>

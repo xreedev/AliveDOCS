@@ -53,12 +53,26 @@ async function decide({ title, scenes, current, previous, said }) {
             none: "Filler, applause, unclear, or nothing that points to any slide",
           },
         },
+        go_back: {
+          type: "noul",
+          instructions: "In `just_said`, is the speaker explicitly asking to go back to, return to, or show again an earlier slide or part?",
+          criteria: {
+            true: "A clear request to go back or revisit something, e.g. 'go back', 'let's return to', 'show that again'",
+            false: "Just continuing the talk, even if it mentions or recaps something covered earlier",
+          },
+        },
       },
     }),
   });
   if (!res.ok) throw new Error(`Jev ${res.status}: ${await res.text()}`);
   const { answers } = await res.json();
-  return answers.slide; // { choice, confidence, probabilities }
+
+  // Forward only: moving to an earlier slide needs an explicit "go back" from the speaker.
+  const order = Object.keys(scenes);
+  const { choice, confidence } = answers.slide;
+  const backwards = choice === "back" || order.indexOf(choice) < order.indexOf(current);
+  if (backwards && answers.go_back.noul < 0.5) return { choice: "none", confidence, blocked: choice };
+  return { choice, confidence };
 }
 
 http
@@ -79,9 +93,9 @@ http
               previous: form.get("previous") || "",
             })
           : null;
-        console.log(JSON.stringify(said), "→", decision?.choice, decision?.confidence);
+        console.log(JSON.stringify(said), "→", decision?.choice, decision?.confidence, decision?.blocked ? `(blocked going back to ${decision.blocked})` : "");
         res.writeHead(200, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ text: said, choice: decision?.choice, confidence: decision?.confidence }));
+        return res.end(JSON.stringify({ text: said, ...decision }));
       }
 
       // static files from this folder

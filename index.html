@@ -320,12 +320,12 @@ addEventListener("keydown", (e) => { if (e.key === "ArrowRight") step(1); if (e.
 show("welcome");
 
 // ---------- decisions from speech ----------
-function onResult({ text, choice, confidence = 0, error }) {
+function onResult({ text, choice, confidence = 0, blocked, error }) {
   if (error) return console.error(error);
   if (!text) return;
   const acted = confidence >= 0.5 && choice !== "none";  // Jev isn't sure → stay put
   if (acted) choice === "next" ? step(1) : choice === "back" ? step(-1) : show(choice);
-  const label = acted ? `→ ${SLIDES[current][0]}` : "stayed";
+  const label = acted ? `→ ${SLIDES[current][0]}` : blocked ? `stayed · no “go back” heard` : "stayed";
   $("log").querySelector(".empty")?.remove();
   $("log").insertAdjacentHTML("afterbegin",
     `<li class="${acted ? "" : "skip"}"><q></q><div class="d"><b>${label}</b><span class="bar"><i style="width:${Math.round(confidence * 100)}%"></i></span>${confidence.toFixed(2)}</div></li>`);

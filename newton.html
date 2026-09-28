@@ -152,14 +152,11 @@ async function toggleMic() {
   btn.classList.add("on"); btn.textContent = "⏹ Stop mic";
   stop = listen(stream, analyser, {
     deck: () => ({ title: "How Isaac Newton discovered gravity", scenes: DESCRIPTIONS, current: scene }),
-    onResult: ({ text, choice, confidence, error }) => {
+    onResult: ({ text, action, slide, reason, error }) => {
       if (error) return console.error(error);
       if (!text) return;
-      document.getElementById("heard").textContent = `“${text}” → ${choice} (${(confidence ?? 0).toFixed(2)})`;
-      if (confidence < 0.5) return;           // Jev isn't sure: stay put
-      if (choice === "next") step(1);
-      else if (choice === "back") step(-1);
-      else show(choice);                      // "none" or current scene is ignored by show()
+      document.getElementById("heard").textContent = `“${text}” → ${action === "go" ? slide : `stayed (${reason})`}`;
+      if (action === "go") show(slide);       // the server already applied the ambiguity rules
     },
   });
 }

@@ -51,6 +51,12 @@
   #log .d .bar { flex: 1; height: 3px; background: var(--bg); border-radius: 3px; overflow: hidden; }
   #log .d .bar i { display: block; height: 100%; background: var(--accent); }
   #log li.skip .d b { color: var(--muted); } #log li.skip .d .bar i { background: var(--muted); }
+  #log .c { display: grid; grid-template-columns: 110px 1fr 34px; align-items: center; gap: 8px; margin-top: 5px; font-size: 11px; color: var(--muted); }
+  #log .c .bar { height: 3px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  #log .c .bar i { display: block; height: 100%; background: var(--accent); }
+  #log li.skip .c .bar i { background: var(--muted); }
+  #log .c em { font-style: normal; text-align: right; }
+  #log .d span { margin-left: auto; }
   #log .empty { color: var(--muted); background: none; padding: 0; animation: none; }
   @keyframes slidein { from { opacity: 0; transform: translateY(-6px); } }
 
@@ -159,6 +165,197 @@
   .underline { height: .5cqw; margin: 1.5cqw auto 0; width: 0; background: linear-gradient(90deg, #2997ff, #f472b6); border-radius: 1cqw; }
   .slide.active .underline { animation: sweep 1.2s 1.2s cubic-bezier(.2,.7,.2,1) forwards; }
   @keyframes sweep { to { width: 60%; } }
+
+  /* ---------- decks: each deck is a layer on the stage ---------- */
+  .deck { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .6s, visibility .6s; }
+  .deck.on { opacity: 1; visibility: visible; }
+  .decks { display: inline-flex; background: var(--panel2); border-radius: 99px; padding: 3px; }
+  .decks button { border: 0; background: none; padding: 6px 12px; border-radius: 99px; font-size: 13px; color: var(--muted); }
+  .decks button.on { background: var(--accent); color: #fff; }
+
+  /* ================= iPad deck: one device on stage, moving through the story ================= */
+  .blob { position: absolute; width: 62cqw; height: 62cqw; border-radius: 50%; filter: blur(10cqw); opacity: .5; transition: background-color 1.6s, translate 2s cubic-bezier(.6,0,.2,1); }
+  .blob.b1 { left: -18cqw; top: -30cqw; background: #1e293b; }
+  .blob.b2 { right: -20cqw; bottom: -34cqw; background: #0f172a; }
+  [data-slide=home] .b1 { background: #2563eb; } [data-slide=home] .b2 { background: #db2777; }
+  [data-slide=web] .b1 { background: #0284c7; } [data-slide=web] .b2 { background: #2563eb; translate: -10cqw 0; }
+  [data-slide=rotate] .b1 { background: #6366f1; translate: 20cqw 6cqw; } [data-slide=rotate] .b2 { background: #0ea5e9; }
+  [data-slide=mail] .b1 { background: #1d4ed8; } [data-slide=mail] .b2 { background: #38bdf8; translate: -30cqw 0; }
+  [data-slide=photos] .b1 { background: #f59e0b; translate: 30cqw 0; } [data-slide=photos] .b2 { background: #ec4899; }
+  [data-slide=calendar] .b1 { background: #ef4444; } [data-slide=calendar] .b2 { background: #f97316; translate: -20cqw -6cqw; }
+  [data-slide=maps] .b1 { background: #059669; translate: 25cqw 4cqw; } [data-slide=maps] .b2 { background: #0ea5e9; }
+  [data-slide=music] .b1 { background: #e11d48; } [data-slide=music] .b2 { background: #7c3aed; translate: -35cqw 0; }
+  [data-slide=store] .b1 { background: #9333ea; translate: 10cqw 0; } [data-slide=store] .b2 { background: #2563eb; }
+  [data-slide=video] .b1 { background: #b91c1c; } [data-slide=video] .b2 { background: #1e1b4b; }
+  [data-slide=outro] .b1 { background: #2563eb; translate: 30cqw 12cqw; } [data-slide=outro] .b2 { background: #9333ea; translate: -30cqw -10cqw; }
+
+  .pad { position: absolute; left: var(--x, 50%); top: var(--y, 47%); width: var(--w, 25cqw); height: var(--h, 33.3cqw);
+         transform: translate(-50%, -50%) scale(var(--s, 1)); background: #0c0c0e; border-radius: 2.2cqw;
+         box-shadow: 0 0 0 .3cqw #a1a1a6, 0 0 0 .45cqw #3a3a3e, 0 4cqw 9cqw rgba(0,0,0,.65);
+         transition: left 1.2s, top 1.2s, width 1.2s, height 1.2s, transform 1.2s; transition-timing-function: cubic-bezier(.65,0,.25,1); }
+  .pad .screen { position: absolute; inset: 1.7cqw; border-radius: .3cqw; overflow: hidden; background: #000; }
+  .pad .screen::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.08) 50%, transparent 60%); pointer-events: none; }
+  .pad .hb { position: absolute; width: 1.2cqw; height: 1.2cqw; border-radius: 50%; border: .12cqw solid #48484c; left: calc(50% - .6cqw); top: calc(100% - 1.45cqw); transition: all 1.2s cubic-bezier(.65,0,.25,1); }
+
+  /* where the device sits on each slide (portrait unless listed as landscape) */
+  [data-slide=reveal] .pad { --x: 50%; --y: 47%; animation: padrise 1.8s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes padrise { from { translate: 0 40cqw; opacity: 0; } }
+  [data-slide=home] .pad, [data-slide=calendar] .pad { --x: 30%; }
+  [data-slide=web] .pad { --x: 30%; --s: 1.06; }
+  [data-slide=rotate] .pad { --x: 66%; animation: turn 5s 1s cubic-bezier(.65,0,.25,1) infinite; }
+  @keyframes turn { 32%, 55% { transform: translate(-50%, -50%) scale(var(--s, 1)) rotate(-90deg); } }
+  [data-slide=music] .pad { --x: 70%; }
+  :is([data-slide=mail], [data-slide=photos], [data-slide=maps], [data-slide=store], [data-slide=video]) .pad { --w: 40cqw; --h: 30cqw; }
+  :is([data-slide=mail], [data-slide=photos], [data-slide=maps], [data-slide=store], [data-slide=video]) .pad .hb { left: calc(100% - 1.45cqw); top: calc(50% - .6cqw); }
+  [data-slide=mail] .pad, [data-slide=store] .pad { --x: 35%; }
+  [data-slide=photos] .pad, [data-slide=maps] .pad { --x: 65%; }
+  [data-slide=video] .pad { --x: 50%; --y: 43%; --w: 50cqw; --h: 37.5cqw; }
+  [data-slide=outro] .pad { --x: 50%; --y: 44%; --w: 16cqw; --h: 21.3cqw; }
+
+  /* apps on the screen: one visible per slide */
+  .app { position: absolute; inset: 0; opacity: 0; transition: opacity .7s .45s; }
+  :is([data-slide=reveal], [data-slide=home], [data-slide=outro]) .app.home, :is([data-slide=web], [data-slide=rotate]) .app.web,
+  [data-slide=mail] .app.mail, [data-slide=photos] .app.photos, [data-slide=calendar] .app.cal, [data-slide=maps] .app.maps,
+  [data-slide=music] .app.music, [data-slide=store] .app.store, [data-slide=video] .app.video { opacity: 1; }
+  [data-slide=reveal] .app.home { transition-delay: 1.7s; }
+
+  /* home screen */
+  .app.home .wall { position: absolute; inset: 0; background: radial-gradient(circle at 30% 20%, #60a5fa, transparent 55%), radial-gradient(circle at 80% 80%, #f472b6, transparent 55%), #1e1b4b; }
+  [data-slide=home] .app.home .wall { animation: hue 6s 1s linear infinite; }
+  @keyframes hue { to { filter: hue-rotate(360deg); } }
+  .app.home .grid { position: absolute; inset: 8% 10% 22%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 9% 14%; align-content: start; }
+  .app.home .dock { position: absolute; left: 0; right: 0; bottom: 0; height: 16%; background: rgba(255,255,255,.18); display: flex; justify-content: center; align-items: center; gap: 8%; }
+  .app.home i, .app.home .dock i { display: block; aspect-ratio: 1; border-radius: 22%; background: var(--c); box-shadow: 0 .2cqw .5cqw rgba(0,0,0,.3); }
+  .app.home .dock i { height: 62%; }
+  :is([data-slide=reveal], [data-slide=home], [data-slide=outro]) .app.home i { animation: pop .45s both; animation-delay: calc(var(--dl, .5s) + var(--k) * .04s); }
+  [data-slide=reveal] .app.home { --dl: 2s; }
+
+  /* web */
+  .app.web { background: #f5f5f7; }
+  .app.web .bar { height: 9%; background: #d1d5db; display: flex; align-items: center; justify-content: center; }
+  .app.web .bar b { font: 500 1.05cqw Inter, sans-serif; color: #374151; background: #fff; border-radius: 1cqw; padding: .3cqw 3cqw; }
+  .app.web .page { position: absolute; inset: 9% 0 0; padding: 5%; transform-origin: 40% 25%; }
+  [data-slide=web] .app.web .page { animation: zoom 3.2s 1.4s ease-in-out infinite alternate; }
+  @keyframes zoom { to { transform: scale(1.35); } }
+  .app.web .hero { height: 34%; border-radius: .4cqw; background: linear-gradient(135deg, #111827, #374151 60%, #6b7280); position: relative; }
+  .app.web .hero::after { content: ""; position: absolute; left: 36%; top: 22%; width: 28%; height: 56%; border-radius: .6cqw; border: .25cqw solid #d1d5db; }
+  .app.web .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5%; margin: 6% 0; }
+  .app.web .cols i { height: 5cqw; border-radius: .3cqw; background: #e5e7eb; }
+  .app.web .lines i { display: block; height: .55cqw; margin: .9cqw 0; border-radius: 1cqw; background: #d1d5db; width: var(--l, 100%); }
+  .touch { position: absolute; width: 2.4cqw; height: 2.4cqw; margin: -1.2cqw; border-radius: 50%; background: rgba(41,151,255,.35); border: .2cqw solid rgba(41,151,255,.8); left: 45%; top: 40%; opacity: 0; }
+  [data-slide=web] .touch { animation: pinch 3.2s 1.4s ease-in-out infinite alternate; }
+  [data-slide=web] .touch.t2 { animation-name: pinch2; }
+  @keyframes pinch { 0% { opacity: 1; translate: 0 0; } 100% { opacity: 1; translate: -5cqw -4cqw; } }
+  @keyframes pinch2 { 0% { opacity: 1; translate: 1cqw 1cqw; } 100% { opacity: 1; translate: 6cqw 5cqw; } }
+
+  /* mail */
+  .app.mail { background: #fff; display: grid; grid-template-columns: 34% 1fr; }
+  .app.mail .list { background: #f3f4f6; border-right: 1px solid #d1d5db; padding-top: 8%; }
+  .app.mail .list div { padding: 5% 8%; border-bottom: 1px solid #e5e7eb; }
+  .app.mail .list div:first-child { background: #3b82f6; } .app.mail .list div:first-child :is(b, s) { background: rgba(255,255,255,.8); }
+  .app.mail .list b, .app.mail .list s { display: block; height: .5cqw; border-radius: 1cqw; background: #9ca3af; width: 60%; }
+  .app.mail .list s { width: 90%; margin-top: .5cqw; background: #d1d5db; }
+  .app.mail .msg { padding: 7% 8%; }
+  .app.mail .msg h5 { margin: 0 0 1.2cqw; height: 1cqw; width: 50%; background: #111827; border-radius: 1cqw; }
+  .app.mail .msg i { display: block; height: .5cqw; margin: .8cqw 0; border-radius: 1cqw; background: #d1d5db; width: var(--l, 100%); }
+  .app.mail .msg .caret { background: #2563eb; width: 0; }
+  [data-slide=mail] .app.mail .msg .caret { animation: typing 2.5s 2.4s steps(14) infinite; }
+  @keyframes typing { to { width: 70%; } }
+  .app.mail .kbd { position: absolute; left: 0; right: 0; bottom: 0; height: 42%; background: #d1d5db; padding: 1.2% 1.5%; display: grid; grid-template-columns: repeat(10, 1fr); gap: 5% 1.2%; translate: 0 100%; transition: translate .8s cubic-bezier(.2,.7,.2,1); }
+  [data-slide=mail] .app.mail .kbd { translate: 0 0; transition-delay: 1.8s; }
+  .app.mail .kbd i { background: #fff; border-radius: .25cqw; box-shadow: 0 .1cqw 0 #9ca3af; }
+  .app.mail .kbd i.sp { grid-column: 3 / 9; }
+
+  /* photos: stacks that unfold into a grid */
+  .app.photos { background: #111; }
+  .app.photos i { position: absolute; width: 21%; height: 26%; left: var(--sx); top: var(--sy); rotate: var(--rot); border-radius: .25cqw; border: .25cqw solid #fff; background: var(--c); box-shadow: 0 .4cqw 1cqw rgba(0,0,0,.5); }
+  [data-slide=photos] .app.photos i { animation: unfold 1s cubic-bezier(.6,0,.2,1) forwards; animation-delay: calc(1.8s + var(--k) * .07s); }
+  @keyframes unfold { to { left: var(--gx); top: var(--gy); rotate: 0deg; } }
+  .app.photos .album { position: absolute; bottom: 4%; left: 0; right: 0; text-align: center; font: 500 1cqw Inter, sans-serif; color: #9ca3af; }
+
+  /* calendar + contacts */
+  .app.cal { background: #fff; color: #111827; font-family: Inter, sans-serif; }
+  .app.cal .mh { background: linear-gradient(#f3f4f6, #e5e7eb); padding: 5% 6% 3%; font-size: 1.3cqw; font-weight: 700; }
+  .app.cal .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e5e7eb; }
+  .app.cal .days span { background: #fff; aspect-ratio: .9; font-size: .75cqw; padding: 6%; position: relative; color: #6b7280; }
+  .app.cal .days span.today { color: #fff; background: #2563eb; font-weight: 700; }
+  .app.cal .days em { position: absolute; left: 8%; right: 8%; bottom: 12%; height: 22%; border-radius: .2cqw; background: var(--c); opacity: 0; }
+  [data-slide=calendar] .app.cal .days em { animation: pop .4s both; animation-delay: calc(1.6s + var(--k) * .12s); }
+  .app.cal .card { position: absolute; left: 8%; right: 8%; bottom: 5%; height: 34%; background: #fff; border-radius: .6cqw; box-shadow: 0 1cqw 3cqw rgba(0,0,0,.3); display: grid; grid-template-columns: auto 1fr; gap: 6%; align-items: center; padding: 6%; translate: 0 130%; transition: translate .8s cubic-bezier(.2,.7,.2,1); }
+  [data-slide=calendar] .app.cal .card { translate: 0 0; transition-delay: 3.4s; }
+  .app.cal .card .av { width: 5cqw; height: 5cqw; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #ef4444); }
+  .app.cal .card b, .app.cal .card s { display: block; height: .7cqw; border-radius: 1cqw; background: #111827; width: 80%; }
+  .app.cal .card s { background: #d1d5db; width: 60%; margin-top: .8cqw; }
+
+  /* maps: street map → satellite, zoom, pin */
+  .app.maps .layer { position: absolute; inset: 0; transform-origin: 55% 45%; }
+  [data-slide=maps] .app.maps .layer { animation: mapzoom 2.4s 3.2s cubic-bezier(.6,0,.2,1) forwards; }
+  @keyframes mapzoom { to { transform: scale(1.9); } }
+  .app.maps svg { width: 100%; height: 100%; display: block; }
+  .app.maps .sat { opacity: 0; transition: opacity 1.2s; }
+  [data-slide=maps] .app.maps .sat { opacity: 1; transition-delay: 2.2s; }
+  .app.maps .pin { position: absolute; left: 55%; top: 45%; width: 2cqw; height: 2cqw; margin: -2cqw 0 0 -1cqw; border-radius: 50% 50% 50% 0; rotate: -45deg; background: #ef4444; box-shadow: 0 0 0 .3cqw #fff; opacity: 0; }
+  [data-slide=maps] .app.maps .pin { animation: drop .7s 1.4s cubic-bezier(.3,1.6,.5,1) both; }
+  @keyframes drop { from { opacity: 0; translate: 0 -8cqw; } to { opacity: 1; } }
+
+  /* music */
+  .app.music { background: #0b0b0f; }
+  .app.music .covers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4%; padding: 8% 6%; }
+  .app.music .covers i { aspect-ratio: 1; border-radius: .3cqw; background: var(--c); }
+  [data-slide=music] .app.music .covers i { animation: pop .5s both; animation-delay: calc(1.2s + var(--k) * .06s); }
+  .app.music .np { position: absolute; left: 6%; right: 6%; bottom: 5%; height: 14%; border-radius: .6cqw; background: rgba(255,255,255,.1); display: flex; align-items: flex-end; justify-content: center; gap: 3%; padding-bottom: 3%; }
+  .app.music .np u { width: 5%; height: 30%; background: #f43f5e; border-radius: .2cqw; }
+  [data-slide=music] .app.music .np u { animation: eq .5s ease-in-out infinite alternate; animation-delay: calc(var(--k) * -.17s); }
+  @keyframes eq { to { height: 80%; } }
+
+  /* iTunes Store */
+  .app.store { background: #f9fafb; font-family: Inter, sans-serif; }
+  .app.store .tabs2 { display: flex; justify-content: center; gap: 1.2cqw; padding: 2.2% 0; background: linear-gradient(#374151, #1f2937); position: relative; }
+  .app.store .tabs2 span { font-size: .85cqw; color: #e5e7eb; padding: .3cqw .8cqw; border-radius: 1cqw; }
+  [data-slide=store] .app.store .tabs2 span { animation: tab 5s steps(1) infinite; animation-delay: calc(1.4s + var(--k) * 1s); }
+  @keyframes tab { 0%, 20% { background: #2563eb; } 20.1%, 100% { background: transparent; } }
+  .app.store .row { overflow: hidden; margin: 3.5% 0; }
+  .app.store .row div { display: flex; gap: 1.2cqw; width: max-content; padding-left: 1.2cqw; }
+  .app.store .row i { width: 6cqw; aspect-ratio: 1; border-radius: .3cqw; background: var(--c); flex: none; }
+  .app.store .row.tall i { aspect-ratio: .7; }
+  [data-slide=store] .app.store .row div { animation: marquee 9s 1.2s linear infinite; }
+  [data-slide=store] .app.store .row.tall div { animation-direction: reverse; }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+
+  /* video */
+  .app.video { background: linear-gradient(#fb923c, #f472b6 45%, #312e81); overflow: hidden; }
+  .app.video .sun { position: absolute; left: 60%; top: 30%; width: 7cqw; height: 7cqw; border-radius: 50%; background: #fde68a; box-shadow: 0 0 5cqw #fde68a; }
+  .app.video .hill { position: absolute; width: 120%; height: 60%; border-radius: 50%; left: -10%; }
+  .app.video .h1 { top: 62%; background: #4c1d95; } .app.video .h2 { top: 72%; left: -40%; background: #1e1b4b; }
+  [data-slide=video] .app.video .sun { animation: set 8s 1s linear forwards; }
+  [data-slide=video] .app.video .h1 { animation: pan 8s 1s linear forwards; }
+  [data-slide=video] .app.video .h2 { animation: pan 8s 1s linear forwards reverse; }
+  @keyframes set { to { translate: 0 6cqw; } }
+  @keyframes pan { to { translate: 12cqw 0; } }
+  .app.video .play { position: absolute; left: 50%; top: 50%; width: 6cqw; height: 6cqw; margin: -3cqw; border-radius: 50%; background: rgba(0,0,0,.45); display: grid; place-items: center; transition: opacity .5s, scale .5s; }
+  .app.video .play::after { content: ""; border-left: 2cqw solid #fff; border-top: 1.2cqw solid transparent; border-bottom: 1.2cqw solid transparent; margin-left: .5cqw; }
+  [data-slide=video] .app.video .play { opacity: 0; scale: 1.6; transition-delay: 1.6s; }
+  .app.video .hd { position: absolute; right: 3%; top: 4%; font: 700 1cqw Inter, sans-serif; color: #fff; border: .15cqw solid #fff; border-radius: .3cqw; padding: .1cqw .5cqw; }
+  .app.video .prog { position: absolute; left: 4%; right: 4%; bottom: 5%; height: .35cqw; background: rgba(255,255,255,.3); border-radius: 1cqw; }
+  .app.video .prog::after { content: ""; position: absolute; inset: 0; width: 0; background: #ef4444; border-radius: 1cqw; }
+  [data-slide=video] .app.video .prog::after { animation: fill 9s 1.6s linear forwards; }
+  @keyframes fill { to { width: 100%; } }
+
+  /* outro: every feature orbits back around the device */
+  .chip { position: absolute; left: 50%; top: 44%; translate: -50% -50%; padding: .7cqw 1.4cqw; border-radius: 99px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); font-size: 1.4cqw; font-weight: 600; white-space: nowrap; opacity: 0; backdrop-filter: blur(6px); }
+  .chip::before { content: ""; display: inline-block; width: .8cqw; height: .8cqw; border-radius: 50%; background: var(--c); margin-right: .6cqw; }
+  [data-slide=outro] .chip { animation: orbitout 1s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: calc(1s + var(--k) * .12s); }
+  @keyframes orbitout { to { opacity: 1; left: var(--cx); top: var(--cy); } }
+
+  /* copy that accompanies the device */
+  .copy { position: absolute; top: 50%; translate: 0 -50%; width: 38%; }
+  .copy.r { left: 55%; } .copy.l { left: 8%; }
+  .copy.bottom { top: auto; bottom: 5%; translate: none; left: 0; width: 100%; text-align: center; }
+  .copy.top { top: 6%; translate: none; left: 0; width: 100%; text-align: center; }
+  .copy h2 { margin: .8cqw 0; font-size: 4.6cqw; font-weight: 700; letter-spacing: -.035em; line-height: 1.04; }
+  .copy p { margin: 0; font-size: 1.7cqw; color: #c7c7cc; line-height: 1.4; }
+  .copy.bottom h2 { font-size: 3.4cqw; margin: 0; }
+  .ipadmark { font-size: 6.5cqw; font-weight: 300; letter-spacing: -.04em; }
 </style>
 </head>
 <body>
@@ -172,7 +369,8 @@
 
 <header>
   <div class="logo">Alive<b>DOCS</b></div>
-  <div class="sub">Demo · Macworld 2007 — what if Steve's slides simply followed his voice? No clicker, no cue sheet.</div>
+  <div class="sub" id="sub"></div>
+  <div class="decks" id="decks"></div>
   <div class="pill" id="status"><i></i><span>Idle</span></div>
 </header>
 
@@ -197,14 +395,74 @@
     </div>
 
     <div class="meter"><i id="level"></i></div>
-    <p class="hint">AliveDOCS turns each phrase into text (Sarvam), then Jev picks the slide that matches what was said — no fixed keywords.</p>
+    <p class="hint">AliveDOCS turns each phrase into text (Sarvam), Jev scores every slide against it, and the deck only moves when the answer is clear. Close calls, big skips and backward jumps without a “go back” are held.</p>
 
     <h3>Live decisions</h3>
     <ol id="log"><li class="empty">Press play or start the mic — every phrase and the slide it triggered will show up here.</li></ol>
   </aside>
 
   <section class="stagewrap">
-    <div class="stage" id="stage" data-slide="welcome">
+    <div class="stage" id="stage">
+
+      <div class="deck" data-deck="ipad">
+        <div class="blob b1"></div><div class="blob b2"></div>
+        <div class="chips" id="chips"></div>
+
+        <div class="pad"><div class="screen">
+          <div class="app home"><div class="wall"></div><div class="grid" id="homeIcons"></div><div class="dock" id="dockIcons"></div></div>
+          <div class="app web"><div class="bar"><b>www.apple.com</b></div>
+            <div class="page"><div class="hero"></div><div class="cols"><i></i><i></i><i></i></div>
+              <div class="lines"><i></i><i style="--l:92%"></i><i style="--l:80%"></i><i></i><i style="--l:66%"></i><i style="--l:88%"></i></div></div>
+            <span class="touch t1"></span><span class="touch t2"></span></div>
+          <div class="app mail"><div class="list" id="mailList"></div>
+            <div class="msg"><h5></h5><i></i><i style="--l:90%"></i><i style="--l:75%"></i><i class="caret"></i></div>
+            <div class="kbd" id="keys"></div></div>
+          <div class="app photos" id="photos"><div class="album">Albums · Events</div></div>
+          <div class="app cal"><div class="mh">January 2010</div><div class="days" id="days"></div>
+            <div class="card"><span class="av"></span><div><b></b><s></s></div></div></div>
+          <div class="app maps"><div class="layer">
+            <svg class="street" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><rect width="400" height="300" fill="#ece6d6"/>
+              <path d="M0 210 C 80 190 120 250 200 230 S 330 170 400 190 V300 H0Z" fill="#a9d3f5"/><rect x="250" y="40" width="90" height="70" rx="8" fill="#c7e3b0"/>
+              <g stroke="#fff" stroke-width="9" fill="none"><path d="M0 120 H400"/><path d="M150 0 V300"/><path d="M40 0 L 330 300"/></g>
+              <g stroke="#f7c948" stroke-width="6" fill="none"><path d="M0 60 C 120 80 260 40 400 90"/></g></svg>
+            <svg class="sat" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0"><rect width="400" height="300" fill="#4b5d3a"/>
+              <path d="M0 210 C 80 190 120 250 200 230 S 330 170 400 190 V300 H0Z" fill="#1f4e6b"/><circle cx="90" cy="60" r="50" fill="#5f7445"/><circle cx="300" cy="80" r="60" fill="#3d4f2e"/>
+              <g stroke="#a3a38c" stroke-width="5" fill="none" opacity=".8"><path d="M0 120 H400"/><path d="M150 0 V300"/><path d="M40 0 L 330 300"/><path d="M0 60 C 120 80 260 40 400 90"/></g></svg>
+          </div><span class="pin"></span></div>
+          <div class="app music"><div class="covers" id="covers"></div><div class="np"><u style="--k:0"></u><u style="--k:1"></u><u style="--k:2"></u><u style="--k:3"></u><u style="--k:4"></u></div></div>
+          <div class="app store"><div class="tabs2"><span style="--k:0">Music</span><span style="--k:1">Movies</span><span style="--k:2">TV Shows</span><span style="--k:3">Podcasts</span><span style="--k:4">iTunes U</span></div>
+            <div class="row"><div id="row1"></div></div><div class="row tall"><div id="row2"></div></div></div>
+          <div class="app video"><span class="sun"></span><span class="hill h1"></span><span class="hill h2"></span><span class="play"></span><span class="hd">HD</span><span class="prog"></span></div>
+        </div><span class="hb"></span></div>
+
+        <section class="slide" data-for="reveal">
+          <div class="copy top"><div class="kicker b" style="--d:0">January 27, 2010</div></div>
+          <div class="copy bottom"><div class="ipadmark b" style="--d:2">iPad</div></div></section>
+        <section class="slide" data-for="home"><div class="copy r">
+          <div class="kicker b" style="--d:0">A quick look</div><h2 class="b" style="--d:1">Thin. Light.<br><span class="grad">Yours.</span></h2><p class="b" style="--d:2">Make the Home screen your own.</p></div></section>
+        <section class="slide" data-for="web"><div class="copy r">
+          <div class="kicker b" style="--d:0">Safari</div><h2 class="b" style="--d:1">The best way<br>to see <span class="grad">the web.</span></h2><p class="b" style="--d:2">Whole pages, right under your fingertips.</p></div></section>
+        <section class="slide" data-for="rotate"><div class="copy l">
+          <div class="kicker b" style="--d:0">Any orientation</div><h2 class="b" style="--d:1">Hold it<br><span class="grad">any way.</span></h2><p class="b" style="--d:2">Portrait or landscape. It adjusts instantly.</p></div></section>
+        <section class="slide" data-for="mail"><div class="copy r" style="left:62%;width:33%">
+          <div class="kicker b" style="--d:0">Mail</div><h2 class="b" style="--d:1">Email, made<br>for <span class="grad">touch.</span></h2><p class="b" style="--d:2">A near life-size keyboard on glass.</p></div></section>
+        <section class="slide" data-for="photos"><div class="copy l" style="width:33%">
+          <div class="kicker b" style="--d:0">Photos</div><h2 class="b" style="--d:1">Memories,<br><span class="grad">unstacked.</span></h2><p class="b" style="--d:2">Albums, events and built-in slideshows.</p></div></section>
+        <section class="slide" data-for="calendar"><div class="copy r">
+          <div class="kicker b" style="--d:0">Calendar · Contacts</div><h2 class="b" style="--d:1">Your days.<br><span class="grad">Your people.</span></h2><p class="b" style="--d:2">Month and day views, plus your address book.</p></div></section>
+        <section class="slide" data-for="maps"><div class="copy l" style="width:33%">
+          <div class="kicker b" style="--d:0">Maps</div><h2 class="b" style="--d:1">The world,<br><span class="grad">zoomable.</span></h2><p class="b" style="--d:2">Street maps and satellite view.</p></div></section>
+        <section class="slide" data-for="music"><div class="copy l">
+          <div class="kicker b" style="--d:0">iPod</div><h2 class="b" style="--d:1">All your<br><span class="grad">music.</span></h2><p class="b" style="--d:2">Your whole collection, beautifully browsable.</p></div></section>
+        <section class="slide" data-for="store"><div class="copy r" style="left:62%;width:33%">
+          <div class="kicker b" style="--d:0">iTunes Store</div><h2 class="b" style="--d:1">The store,<br><span class="grad">built in.</span></h2><p class="b" style="--d:2">Music · Movies · TV · Podcasts · iTunes U</p></div></section>
+        <section class="slide" data-for="video"><div class="copy bottom">
+          <h2 class="b" style="--d:1">Made for <span class="grad">watching.</span></h2></div></section>
+        <section class="slide" data-for="outro"><div class="copy bottom">
+          <h2 class="b" style="--d:2">That's <span class="grad">iPad.</span></h2><p class="b" style="--d:3">Everything you just saw, in one device.</p></div></section>
+      </div>
+
+      <div class="deck" data-deck="iphone">
 
       <section class="slide glow" data-for="welcome"><div class="center">
         <svg class="apple" viewBox="0 0 100 120"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5f5f7"/><stop offset="1" stop-color="#8e8e93"/></linearGradient></defs>
@@ -258,6 +516,7 @@
         <div class="huge b" style="--d:1">reinvent <span class="grad">the phone.</span></div>
         <div class="underline"></div>
       </div></section>
+      </div>
     </div>
 
     <div class="controls">
@@ -273,38 +532,96 @@
 <script type="module">
 import { listen } from "./alive.js";
 
-// Slide ids → what the speaker says there. Jev matches speech against these descriptions.
-const TITLE = "Steve Jobs introducing the iPhone at Macworld 2007";
-const SLIDES = {
-  welcome:    ["Welcome",      "Opening: this is a day he has been looking forward to for two and a half years"],
-  revolution: ["Revolution",   "Every once in a while a revolutionary product comes along that changes everything; fortunate to work on one in a career; Apple has introduced a few"],
-  mac:        ["Macintosh",    "1984, Apple introduced the Macintosh, it changed Apple and the whole computer industry"],
-  ipod:       ["iPod",         "2001, the first iPod, changed the way we listen to music and the entire music industry"],
-  three:      ["Three",        "Today introducing three revolutionary products of this class"],
-  widescreen: ["Widescreen iPod", "The first one is a widescreen iPod with touch controls"],
-  phone:      ["Mobile phone", "The second is a revolutionary mobile phone"],
-  internet:   ["Internet",     "The third is a breakthrough internet communications device"],
-  spin:       ["iPod · Phone · Internet", "Listing the three together: an iPod, a phone, and an internet communicator, repeated"],
-  one:        ["One device",   "Are you getting it? These are not three separate devices, this is one device"],
-  iphone:     ["iPhone",       "And we are calling it iPhone, the name reveal"],
-  reinvent:   ["Reinvent",     "Today Apple is going to reinvent the phone"],
+// Each deck: slide id → [label, description]. Jev matches speech against the descriptions.
+// Descriptions can be contrastive ({what, not_for, examples}) to separate slides that sound alike.
+const DECKS = {
+  ipad: {
+    label: "iPad · 2010",
+    title: "Steve Jobs introducing the iPad, January 2010",
+    sub: "Demo · iPad launch, 2010 — what if the slides followed Steve's voice? No clicker, no cue sheet.",
+    slides: {
+      reveal:   ["Reveal", { what: "Unveiling the device for the first time: saying its name and showing what it looks like", not_for: "Describing any specific feature or app" }],
+      home:     ["Home screen", { what: "A first quick look: how thin it is, and changing the Home screen wallpaper to personalize it", not_for: "The Photos app, photo albums or slideshows", examples: ["it's really thin", "you can change the background", "make it look however you want"] }],
+      web:      ["Web", { what: "Browsing the web: seeing a whole web page and touching it with your fingers; better than a laptop or a phone", not_for: "Turning or rotating the device" }],
+      rotate:   ["Any orientation", { what: "Turning the device any way (portrait, landscape, upside down) and the screen adjusting by itself", not_for: "Turning it sideways to see email" }],
+      mail:     ["Mail", { what: "Email: the inbox, reading a message, writing one on the on-screen keyboard", examples: ["check your inbox", "compose a message", "the keyboard pops up"] }],
+      photos:   ["Photos", { what: "The Photos app: albums and events, stacks of pictures, flicking through them, slideshows, sharing with family", not_for: "Choosing a Home screen wallpaper" }],
+      calendar: ["Calendar & Contacts", { what: "The built-in calendar (month and day views) and the address book of contacts" }],
+      maps:     ["Maps", { what: "The Maps app: street maps, satellite view, zooming in on places" }],
+      music:    ["Music", { what: "Listening to and enjoying your own music collection", not_for: "Buying or discovering music in the iTunes Store" }],
+      store:    ["iTunes Store", { what: "The iTunes Store built in: discovering and buying music, movies, TV shows, podcasts, iTunes U", not_for: "Watching videos or playing music you already have" }],
+      video:    ["Video", { what: "Watching video on it: YouTube including HD, TV shows and movies", not_for: "Buying movies or shows in the store" }],
+      outro:    ["That's iPad", { what: "Wrapping up at the end: that was a quick summary of everything it can do", not_for: "Near the start, when he says he is about to give a quick overview" }],
+    },
+  },
+  iphone: {
+    label: "iPhone · 2007",
+    title: "Steve Jobs introducing the iPhone at Macworld 2007",
+    sub: "Demo · Macworld 2007 — what if Steve's slides simply followed his voice? No clicker, no cue sheet.",
+    slides: {
+      welcome:    ["Welcome",      "Opening: this is a day he has been looking forward to for two and a half years"],
+      revolution: ["Revolution",   "Every once in a while a revolutionary product comes along that changes everything; fortunate to work on one in a career; Apple has introduced a few"],
+      mac:        ["Macintosh",    "1984, Apple introduced the Macintosh, it changed Apple and the whole computer industry"],
+      ipod:       ["iPod",         "2001, the first iPod, changed the way we listen to music and the entire music industry"],
+      three:      ["Three",        "Today introducing three revolutionary products of this class"],
+      widescreen: ["Widescreen iPod", "The first one is a widescreen iPod with touch controls"],
+      phone:      ["Mobile phone", "The second is a revolutionary mobile phone"],
+      internet:   ["Internet",     "The third is a breakthrough internet communications device"],
+      spin:       ["iPod · Phone · Internet", "Listing the three together: an iPod, a phone, and an internet communicator, repeated"],
+      one:        ["One device",   "Are you getting it? These are not three separate devices, this is one device"],
+      iphone:     ["iPhone",       "And we are calling it iPhone, the name reveal"],
+      reinvent:   ["Reinvent",     "Today Apple is going to reinvent the phone"],
+    },
+  },
 };
-const ORDER = Object.keys(SLIDES);
-const DESCRIPTIONS = Object.fromEntries(ORDER.map((id) => [id, SLIDES[id][1]]));
 const $ = (id) => document.getElementById(id);
 const stage = $("stage");
-let current = "welcome";
+let deckId, SLIDES, ORDER, current;
 
-// app icons on the iPhone screen
-const COLORS = ["#34c759", "#5ac8fa", "#ff9500", "#ff2d55", "#af52de", "#ffcc00", "#007aff", "#ff3b30", "#30b0c7", "#a2845e", "#5856d6", "#64d2ff"];
-$("apps").innerHTML = COLORS.map((c, k) => `<i style="background:${c};--k:${k}"></i>`).join("");
+// ---------- generated screen content (icons, tiles, keys…) ----------
+const PALETTE = ["#34c759", "#5ac8fa", "#ff9500", "#ff2d55", "#af52de", "#ffcc00", "#007aff", "#ff3b30", "#30b0c7", "#a2845e", "#5856d6", "#64d2ff"];
+const col = (k) => PALETTE[k % PALETTE.length];
+const tiles = (n, f) => Array.from({ length: n }, (_, k) => f(k)).join("");
+$("apps").innerHTML = tiles(12, (k) => `<i style="background:${col(k)};--k:${k}"></i>`);
+$("homeIcons").innerHTML = tiles(16, (k) => `<i style="--c:${col(k)};--k:${k}"></i>`);
+$("dockIcons").innerHTML = tiles(4, (k) => `<i style="--c:${col(k + 6)};--k:${k + 16}"></i>`);
+$("mailList").innerHTML = tiles(7, () => "<div><b></b><s></s></div>");
+$("keys").innerHTML = tiles(29, () => "<i></i>") + '<i class="sp"></i>';
+const SHOTS = ["linear-gradient(#60a5fa,#fef3c7)", "linear-gradient(#f97316,#7c2d12)", "linear-gradient(#34d399,#065f46)", "linear-gradient(#f472b6,#831843)", "linear-gradient(#fde68a,#b45309)", "linear-gradient(#a5b4fc,#312e81)"];
+$("photos").insertAdjacentHTML("afterbegin", tiles(12, (k) => {
+  const stack = k % 3, gx = 3 + (k % 4) * 24, gy = 4 + Math.floor(k / 4) * 28;
+  return `<i style="--k:${k};--c:${SHOTS[k % 6]};--sx:${8 + stack * 30}%;--sy:30%;--rot:${(k * 37) % 17 - 8}deg;--gx:${gx}%;--gy:${gy}%"></i>`;
+}));
+$("days").innerHTML = tiles(5, () => "<span></span>") + tiles(31, (k) => {
+  const d = k + 1, ev = [4, 11, 14, 19, 22, 27].indexOf(d);
+  return `<span class="${d === 27 ? "today" : ""}">${d}${ev >= 0 ? `<em style="--c:${col(ev * 2)};--k:${ev}"></em>` : ""}</span>`;
+});
+$("covers").innerHTML = tiles(9, (k) => `<i style="--k:${k};--c:linear-gradient(135deg,${col(k)},${col(k + 5)})"></i>`);
+$("row1").innerHTML = tiles(16, (k) => `<i style="--c:linear-gradient(135deg,${col(k)},${col(k + 3)})"></i>`);
+$("row2").innerHTML = tiles(16, (k) => `<i style="--c:linear-gradient(${col(k + 2)},#111)"></i>`);
+const CHIPS = [["Web", 1], ["Mail", 6], ["Photos", 2], ["Calendar", 7], ["Maps", 0], ["Music", 3], ["iTunes", 4], ["Video", 8]];
+$("chips").innerHTML = CHIPS.map(([name, c], k) => {
+  const a = (k / CHIPS.length) * 2 * Math.PI - Math.PI / 2;
+  return `<span class="chip" style="--k:${k};--c:${col(c)};--cx:${50 + 30 * Math.cos(a)}%;--cy:${44 + 30 * Math.sin(a)}%">${name}</span>`;
+}).join("");
 
-// ---------- slides ----------
-$("strip").innerHTML = ORDER.map((id, i) => `<button data-id="${id}">${i + 1}. ${SLIDES[id][0]}</button>`).join("");
+// ---------- decks & slides ----------
+function useDeck(id) {
+  deckId = id; SLIDES = DECKS[id].slides; ORDER = Object.keys(SLIDES);
+  for (const d of stage.querySelectorAll(".deck")) d.classList.toggle("on", d.dataset.deck === id);
+  for (const b of $("decks").children) b.classList.toggle("on", b.dataset.deck === id);
+  $("sub").textContent = DECKS[id].sub;
+  $("strip").innerHTML = ORDER.map((s, i) => `<button data-id="${s}">${i + 1}. ${SLIDES[s][0]}</button>`).join("");
+  current = null;
+  show(ORDER[0]);
+  try { localStorage.setItem("alivedocs-deck", id); } catch {}
+}
+$("decks").innerHTML = Object.entries(DECKS).map(([id, d]) => `<button data-deck="${id}">${d.label}</button>`).join("");
+$("decks").onclick = (e) => e.target.dataset.deck && useDeck(e.target.dataset.deck);
 $("strip").onclick = (e) => e.target.dataset.id && show(e.target.dataset.id);
 
 function show(id) {
-  if (!SLIDES[id]) return;
+  if (!SLIDES[id] || id === current) return;
   current = id;
   stage.dataset.slide = id;
   for (const s of stage.querySelectorAll(".slide")) s.classList.toggle("active", s.dataset.for.split(" ").includes(id));
@@ -317,22 +634,25 @@ $("prev").onclick = () => step(-1);
 $("next").onclick = () => step(1);
 $("full").onclick = () => stage.requestFullscreen?.();
 addEventListener("keydown", (e) => { if (e.key === "ArrowRight") step(1); if (e.key === "ArrowLeft") step(-1); });
-show("welcome");
+let saved; try { saved = localStorage.getItem("alivedocs-deck"); } catch {}
+useDeck(DECKS[saved] ? saved : "ipad");
 
-// ---------- decisions from speech ----------
-function onResult({ text, choice, confidence = 0, blocked, error }) {
+// ---------- decisions from speech (the server applies the ambiguity rules) ----------
+const nameOf = (id) => SLIDES[id]?.[0] ?? (id === "none" ? "Nothing" : id);
+function onResult({ text, action, slide, reason = "", confidence = 0, candidates = [], error }) {
   if (error) return console.error(error);
   if (!text) return;
-  const acted = confidence >= 0.5 && choice !== "none";  // Jev isn't sure → stay put
-  if (acted) choice === "next" ? step(1) : choice === "back" ? step(-1) : show(choice);
-  const label = acted ? `→ ${SLIDES[current][0]}` : blocked ? `stayed · no “go back” heard` : "stayed";
+  if (action === "go") show(slide);
+  const label = action === "go" ? `→ ${nameOf(slide)}` : `stayed · ${reason.replace(/\b\w+\b/g, (w) => SLIDES[w]?.[0] ?? w)}`;
+  const bars = candidates.map(([id, p]) =>
+    `<div class="c"><span>${nameOf(id)}</span><span class="bar"><i style="width:${Math.round(p * 100)}%"></i></span><em>${p.toFixed(2)}</em></div>`).join("");
   $("log").querySelector(".empty")?.remove();
   $("log").insertAdjacentHTML("afterbegin",
-    `<li class="${acted ? "" : "skip"}"><q></q><div class="d"><b>${label}</b><span class="bar"><i style="width:${Math.round(confidence * 100)}%"></i></span>${confidence.toFixed(2)}</div></li>`);
+    `<li class="${action === "go" ? "" : "skip"}"><q></q><div class="d"><b>${label}</b><span>conf ${confidence.toFixed(2)}</span></div>${bars}</li>`);
   $("log").firstElementChild.querySelector("q").textContent = text;
   while ($("log").children.length > 40) $("log").lastElementChild.remove();
 }
-const deck = () => ({ title: TITLE, scenes: DESCRIPTIONS, current });
+const deck = () => ({ title: DECKS[deckId].title, scenes: Object.fromEntries(ORDER.map((id) => [id, SLIDES[id][1]])), current });
 const onLevel = (p) => ($("level").style.width = Math.min(100, p * 250) + "%");
 
 function setStatus(text) {
@@ -364,7 +684,7 @@ video.onplay = async () => {
     src.connect(ctx.destination); src.connect(analyser); src.connect(dest);
     videoTap = { stream: dest.stream, analyser };
   }
-  if (video.currentTime < 1) show("welcome");
+  if (video.currentTime < 1) show(ORDER[0]);
   stopMic();
   stopVideo?.();
   stopVideo = listen(videoTap.stream, videoTap.analyser, { deck, onResult, onLevel });

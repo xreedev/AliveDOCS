@@ -30,22 +30,29 @@ async function transcribe(audio) {
   return (data.transcript || "").trim();
 }
 
-// 2) Jev picks which slide should be on screen. The page sends its own slide list,
-//    so the same server drives any deck.
-async function decide({ title, scenes, current, previous, said }) {
+// 2) Jev reads what was said and scores every slide. The page sends its own ordered slide list
+//    (descriptions may be strings or {what, not_for, examples}), so the same server drives any deck.
+async function askJev({ title, scenes, current, previous, said }) {
+  const order = Object.keys(scenes);
   const res = await fetch("https://api.typesafe.ai/v1/systemone", {
     method: "POST",
     headers: { Authorization: `Bearer ${JEV_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "jev-latest",
-      state: { presentation: title, current_slide: current, said_before: previous, just_said: said },
+      state: {
+        presentation: title,
+        current_slide: current,
+        upcoming_slide: order[order.indexOf(current) + 1] || "none, this is the last slide",
+        said_before: previous,
+        just_said: said,
+      },
       questions: {
         slide: {
           type: "choice",
           instructions:
             "A speaker is giving `presentation` while slides play behind them. " +
             "Based on `just_said` (with `said_before` as context), which slide should be on screen now? " +
-            "The screen currently shows `current_slide`.",
+            "The screen currently shows `current_slide`; talks usually move on to `upcoming_slide` next.",
           criteria: {
             ...scenes,
             next: "The speaker asks to continue, move on, or go to the next part without naming it",
@@ -65,17 +72,40 @@ async function decide({ title, scenes, current, previous, said }) {
     }),
   });
   if (!res.ok) throw new Error(`Jev ${res.status}: ${await res.text()}`);
-  const { answers } = await res.json();
-
-  // Forward only: moving to an earlier slide needs an explicit "go back" from the speaker.
-  const order = Object.keys(scenes);
-  const { choice, confidence } = answers.slide;
-  const backwards = choice === "back" || order.indexOf(choice) < order.indexOf(current);
-  if (backwards && answers.go_back.noul < 0.5) return { choice: "none", confidence, blocked: choice };
-  return { choice, confidence };
+  return (await res.json()).answers;
 }
 
-http
+// 3) Code, not the model, decides whether to move. Every rule below exists to handle ambiguity.
+const MIN_CONFIDENCE = 0.5;   // Jev's own certainty about its pick
+const MIN_MARGIN = 0.2;       // top slide must beat the runner-up by this much
+const BIG_JUMP = 2;           // skipping more than this many slides ahead needs…
+const BIG_JUMP_CONFIDENCE = 0.75, BIG_JUMP_MARGIN = 0.4;  // …a much clearer cue
+
+export function resolve(answers, order, current) {
+  const i = order.indexOf(current);
+  // "next"/"back" are the same thing as naming that slide, so merge their votes before comparing.
+  const p = { ...answers.slide.probabilities };
+  const merge = (from, to) => { if (to) p[to] = (p[to] || 0) + (p[from] || 0); delete p[from]; };
+  merge("next", order[i + 1]);
+  merge("back", order[i - 1]);
+  const [[top, p1], [second, p2] = ["none", 0]] = Object.entries(p).sort((a, b) => b[1] - a[1]);
+  const confidence = answers.slide.confidence;
+  const candidates = [[top, p1], [second, p2]];
+  const stay = (reason) => ({ action: "stay", reason, confidence, candidates });
+
+  if (top === "none") return stay("nothing that points to a slide");
+  if (top === current) return stay("already on this slide");
+  if (confidence < MIN_CONFIDENCE) return stay("not sure enough");
+  if (p1 - p2 < MIN_MARGIN) return stay(`too close to call: ${top} vs ${second}`);
+  const jump = order.indexOf(top) - i;
+  if (jump < 0 && answers.go_back.noul < 0.5) return stay(`no explicit “go back” (wanted ${top})`);
+  if (jump > BIG_JUMP && (confidence < BIG_JUMP_CONFIDENCE || p1 - p2 < BIG_JUMP_MARGIN))
+    return stay(`big jump to ${top} needs a clearer cue`);
+  return { action: "go", slide: top, reason: jump < 0 ? "asked to go back" : "matches what was said", confidence, candidates };
+}
+
+// Only start the server when run directly (tests import resolve()).
+if (process.argv[1] === import.meta.filename) http
   .createServer(async (req, res) => {
     try {
       if (req.method === "POST" && req.url === "/listen") {
@@ -84,16 +114,12 @@ http
           method: "POST", headers: req.headers, body: Readable.toWeb(req), duplex: "half",
         }).formData();
         const said = await transcribe(form.get("audio"));
+        const scenes = JSON.parse(form.get("scenes")), current = form.get("current");
         const decision = said
-          ? await decide({
-              said,
-              title: form.get("title"),
-              scenes: JSON.parse(form.get("scenes")),
-              current: form.get("current"),
-              previous: form.get("previous") || "",
-            })
+          ? resolve(await askJev({ said, scenes, current, title: form.get("title"), previous: form.get("previous") || "" }),
+              Object.keys(scenes), current)
           : null;
-        console.log(JSON.stringify(said), "→", decision?.choice, decision?.confidence, decision?.blocked ? `(blocked going back to ${decision.blocked})` : "");
+        console.log(JSON.stringify(said), "→", decision?.action, decision?.slide || "", `(${decision?.reason})`);
         res.writeHead(200, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ text: said, ...decision }));
       }

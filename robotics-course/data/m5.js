@@ -1014,4 +1014,531 @@ Check that your webcam and chessboard have arrived. Update your Confidence ratin
     ['Increasing the Q weight on the pole angle in LQR makes the controller…', ['Hold the angle more tightly', 'Use less force', 'Ignore the cart', 'Unstable'], 0, 'Q weights how much each state error matters.']
   ]
 });
+
+// ───────────── Section 3 · Jacobians, IK and vision ─────────────
+D({
+  n: 127, icon: '📐', topic: 'Kinematics', hours: 2.5, notion: '3f6cdfea8ce28150b1b4f22c7b6ba3c5', svg: 'arm',
+  title: 'The Jacobian and singularities',
+  goal: 'Understand the Jacobian and what a singularity physically means.',
+  tasks: [
+    'Modern Robotics chapter 5 (velocity kinematics, Jacobian, singularities) — read + videos',
+    'QUT Robot Academy lessons on the Jacobian',
+    'For the 2-link planar arm: derive J by hand, find where det(J) = 0, and describe what the arm cannot do there',
+    'Check in Robotics Toolbox: `jacob0` and its rank at a singular pose',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['What to focus on', 'The Jacobian, and what a singularity physically means when your arm suddenly cannot move sideways\nWorkspace limits, and joint limits versus reachability']],
+  links: [
+    ['Modern Robotics', 'http://hades.mech.northwestern.edu/index.php/Modern_Robotics'],
+    ['QUT Robot Academy', 'https://robotacademy.net.au'],
+    ['Robotics Toolbox for Python', 'https://github.com/petercorke/robotics-toolbox-python']
+  ],
+  video: `
+## From positions to velocities
+@eq ẋ = J(θ) · θ̇ | joint speeds → end-effector velocity
+Forward kinematics maps joint angles to a pose. The Jacobian does the same for velocities: multiply it by the joint speeds, and you get the end-effector's velocity.
+It is a matrix, and it changes with the configuration. Each column says how the end effector moves if you turn just that one joint at unit speed. It is the most useful single object in arm kinematics.
+
+## The 2-link Jacobian by hand
+@eq J = [[−L1·s1 − L2·s12, −L2·s12], [L1·c1 + L2·c12, L2·c12]] | s12 = sin(θ1+θ2)
+Differentiate last week's two-link FK. The x position is L1 cos theta one plus L2 cos of theta one plus theta two; take its partial derivative with respect to each angle, and the same for y. That gives a two by two matrix.
+Derive it yourself on paper today. Then check it numerically: nudge each joint by a tiny angle, see how the position changes, and compare with the columns.
+
+## Singularities
+@eq det(J) = L1·L2·sin θ2 = 0  →  θ2 = 0 or π | arm fully stretched or folded
+A singularity is where the Jacobian loses rank: its determinant goes to zero. For the two-link arm, the determinant is L1 times L2 times sine theta two, which is zero when the elbow is perfectly straight or fully folded.
+At those poses, the two columns of J point the same way. Both joints can only move the gripper along one line. A direction of motion has been lost.
+
+## What it physically means
+- Arm fully stretched: it cannot move further outward, in any way
+- Near the singularity: small sideways motion needs huge joint speeds
+- Inverting J near det = 0 → enormous, dangerous joint commands
+The article's phrase: your arm suddenly cannot move sideways. Stretched straight out, the arm cannot move further outward at all, whatever the joints do. Near that pose, moving the gripper a little in the lost direction demands huge joint speeds.
+That is why singularities matter. Any controller that inverts the Jacobian will command enormous joint speeds near one. Tomorrow you will see exactly that in your IK solver.
+
+## Workspace and joint limits
+| Concept | Meaning |
+|---|---|
+| reachable workspace | every point the gripper can reach |
+| dexterous workspace | points reachable in any orientation |
+| joint limits | can shrink the workspace below the geometry |
+| boundary | the workspace edge is a singular surface |
+The second focus: workspace limits, and joint limits versus reachability. The reachable workspace is every point the gripper can get to; for two links, a ring between the difference and the sum of the link lengths.
+Joint limits can shrink that further: a point may be geometrically reachable, but only with an angle the servo cannot reach. And the outer edge of the workspace is always singular, because the arm is fully stretched there.
+
+## Check it in the toolbox
+\`\`\`python
+import roboticstoolbox as rtb, numpy as np
+robot = rtb.models.Panda()
+J = robot.jacob0(robot.qr)                  # 6 x 7
+print(np.linalg.matrix_rank(J))             # 6 normally
+q = robot.qz.copy()                         # all zeros: arm straight up
+print(np.linalg.matrix_rank(robot.jacob0(q)))  # less than 6 → singular
+\`\`\`
+In Robotics Toolbox, jacob0 gives the Jacobian in the base frame: six rows, for linear and angular velocity, and one column per joint. At a normal pose its rank is six.
+Try the Panda's all-zero pose, pointing straight up, and check the rank: it drops, because some joint axes line up. Log the singular pose you found and describe in words what the arm cannot do there.
+`,
+  key: [
+    'The Jacobian maps joint velocities to end-effector velocity; it depends on θ.',
+    'Singularity: J loses rank (det = 0); a direction of motion is lost.',
+    'Near a singularity, small Cartesian motions need huge joint speeds.',
+    'Workspace edges are singular; joint limits can shrink reachability.'
+  ],
+  quiz: [
+    ['For a 2-link planar arm, where are the singularities?', ['θ1 = 0', 'θ2 = 0 or π (elbow straight or folded)', 'θ1 = θ2', 'Nowhere'], 1, 'det(J) = L1·L2·sin θ2.'],
+    ['What happens if you invert J near a singularity?', ['Nothing special', 'Joint speed commands become enormous', 'The arm locks safely', 'FK fails'], 1, 'That is why IK needs damping.']
+  ]
+});
+
+D({
+  n: 128, icon: '🎯', topic: 'Kinematics', hours: 3, notion: '3f6cdfea8ce281b595c3c6f8f21a7cc2', svg: 'arm',
+  title: 'Numerical IK solver + feel the singularity',
+  goal: 'Your own IK solver that moves the SO-101 gripper to a commanded XYZ.',
+  tasks: [
+    'Modern Robotics chapter 6 (numerical IK, Newton-Raphson). Skim chapter 9 (trajectories)',
+    'Write an IK solver (damped least squares / Jacobian pseudo-inverse) for your SO-101 model',
+    'Command 5 XYZ targets in simulation. Then send the joint angles to the real arm (slowly!)',
+    'Command a target near a singularity / workspace edge. Watch the joints spike. Add damping and compare',
+    'Interpolate a straight line in Cartesian space vs in joint space. Note the difference',
+    'Push to `month-5/so101-kinematics/`. Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (Kinematics)', 'Then write a numerical IK solver that moves the end effector to a commanded XYZ, and watch what it does near a singularity. Feeling the arm lose a degree of freedom is what makes the concept stick'],
+    ['What to focus on', 'Trajectory generation, and why you interpolate in joint space sometimes and Cartesian space other times'],
+    ['Month 5 Milestone (these ones)', 'Compute forward kinematics by hand and solve IK numerically\nExplain what a singularity is by pointing at a robot doing it']
+  ],
+  links: [
+    ['Modern Robotics', 'http://hades.mech.northwestern.edu/index.php/Modern_Robotics'],
+    ['Robotics Toolbox for Python (ikine examples)', 'https://github.com/petercorke/robotics-toolbox-python']
+  ],
+  video: `
+## Why IK is iterative
+@big FK is a formula · IK is a search
+Inverse kinematics asks which joint angles put the gripper at a target. For most arms there is no neat formula, there may be several solutions, or none. So we search numerically.
+The idea is Newton's method. Start from the current angles. Compute where the gripper is with FK, measure the error to the target, and use the Jacobian to work out which small joint change would reduce it. Repeat until the error is tiny.
+
+## The update step
+@eq Δθ = J⁺ · e ·  J⁺ = Jᵀ(J·Jᵀ)⁻¹ | pseudo-inverse, then θ ← θ + Δθ
+Each iteration: the error e is target minus current position. Multiply by the pseudo-inverse of the Jacobian to get a joint step, and add it. The pseudo-inverse works even when J is not square, as with a five-joint arm and a three-number position target.
+Repeat until the error is below a millimetre or so, or give up after a hundred iterations: the target may be unreachable.
+
+## Damped least squares
+@eq Δθ = Jᵀ(J·Jᵀ + λ²·I)⁻¹ · e | λ keeps steps finite near singularities
+Near a singularity, J J transpose is nearly singular, so its inverse explodes and the joint steps become enormous. Damped least squares adds a small lambda squared to the diagonal before inverting.
+Far from singularities it barely changes anything. Near them, it trades a little accuracy for sane, bounded joint motion. Every practical IK solver uses something like this.
+
+## The solver
+\`\`\`python
+def ik(target_xyz, q, lam=0.05, tol=1e-3, iters=100):
+    for _ in range(iters):
+        e = target_xyz - fk(q)[:3, 3]
+        if np.linalg.norm(e) < tol:
+            return q, True
+        J = jacobian_pos(q)                       # 3 x n
+        dq = J.T @ np.linalg.solve(J @ J.T + lam**2 * np.eye(3), e)
+        q = np.clip(q + dq, q_min, q_max)          # respect joint limits
+    return q, False
+\`\`\`
+Here is the whole solver: compute the error, stop if it is small, otherwise take a damped least-squares step and clip to joint limits. Use your FK from Day 13, and a Jacobian either derived or computed numerically by nudging each joint.
+Test it on five targets in simulation, checking the final error for each. Only then send the angles to the real arm, slowly, with a hand near the power switch.
+
+## Feel the singularity
+- Command a target at the edge of the workspace, arm nearly straight
+- Without damping (λ = 0): joints spike, flip, or diverge
+- With damping: the arm stops short, smoothly
+This is the part the article says makes it stick. Command a target near the edge of the workspace, so the arm is almost fully stretched. With lambda set to zero, watch the joint steps spike and the solution jump around.
+Turn the damping back on: the arm reaches as far as it can and stops smoothly. Point at the real arm in that pose and explain what it cannot do: that is a milestone item.
+
+## Joint space versus Cartesian space
+| Interpolate in | Path of the gripper | Use when |
+|---|---|---|
+| joint space | curved, but always feasible | moving between poses in free space |
+| Cartesian space | straight line | the path itself matters: insertion, drawing, approach |
+The last focus: trajectory generation. Interpolate in joint space, blending angles from start to end, and the gripper follows a curve, but every point is feasible and fast to compute. Interpolate in Cartesian space, solving IK along a straight line, and the gripper moves in a straight line, but you may pass near a singularity.
+Try both between two targets and plot the gripper paths. Use joint space for free motion, Cartesian when the path matters, like approaching an object straight down. Push it all and tick the practice task.
+`,
+  key: [
+    'Numerical IK: iterate Δθ = J⁺·e until the error is small.',
+    'Damped least squares adds λ²I to stay sane near singularities.',
+    'Clip to joint limits; test in sim before the real arm.',
+    'Joint-space paths curve but are safe; Cartesian paths are straight but can hit singularities.'
+  ],
+  quiz: [
+    ['What does the damping term λ in damped least-squares IK do?', ['Speeds up convergence', 'Keeps joint steps bounded near singularities', 'Removes joint limits', 'Computes FK'], 1, 'Trades a little accuracy for stability.'],
+    ['When should you interpolate in Cartesian space?', ['Always', 'When the gripper path itself matters, e.g. a straight approach', 'Never', 'Only for mobile robots'], 1, 'Joint space for free motion.']
+  ]
+});
+
+D({
+  n: 129, icon: '👁️', topic: 'Vision', hours: 3, notion: '3f6cdfea8ce2812fa02df3da94733885', svg: 'pinhole',
+  title: 'OpenCV Bootcamp',
+  goal: 'Finish the official free OpenCV course in one sitting.',
+  tasks: [
+    'Complete the FREE OpenCV Bootcamp (2–3 hours)',
+    'With your webcam: live feed → HSV threshold → find the largest coloured blob → draw its centre',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['FREE OpenCV Bootcamp', 'The official two-to-three hour course from OpenCV themselves, covering image manipulation, filtering, edge detection, tracking and the DNN module. Start here rather than a paid course']],
+  links: [['FREE OpenCV Bootcamp', 'https://courses.opencv.org/courses/course-v1:OpenCV+Bootcamp+CV0/about']],
+  video: `
+## Vision week
+@svg pinhole | getting 3D information out of a camera
+Vision week starts today. The article's target is modest and practical: enough vision to get 3D information out of a camera. By the end of the week you will estimate where an object is in 3D from your webcam.
+Start with the official free OpenCV Bootcamp, two to three hours from OpenCV themselves. The article says start here rather than a paid course.
+
+## What the bootcamp covers
+- Reading, displaying and writing images and video
+- Image manipulation: crop, resize, flip, colour spaces
+- Filtering and edge detection (blur, Canny)
+- Tracking, and the DNN module for pretrained networks
+The bootcamp covers images as arrays, basic manipulation, filtering and edge detection, object tracking, and the DNN module that runs pretrained neural networks.
+Do it in one sitting if you can, with the notebooks open. Type the code rather than just watching.
+
+## Images are arrays
+\`\`\`python
+import cv2
+img = cv2.imread("cube.jpg")      # numpy array, shape (H, W, 3), BGR order!
+print(img.shape, img.dtype)        # e.g. (480, 640, 3) uint8
+b, g, r = img[240, 320]            # pixel at row 240, column 320
+\`\`\`
+The single most important fact: an image is a numpy array, height by width by three channels, eight-bit values from zero to 255. Everything you know about numpy applies.
+Two traps. OpenCV stores colour as blue, green, red, not RGB. And indexing is row then column, which is y then x. Both cause endless confusion; write them down.
+
+## Why HSV for colour
+@eq H = which colour · S = how vivid · V = how bright
+To find a coloured object, convert to HSV: hue, saturation and value. Hue is the colour itself, separated from brightness. In BGR, a red cube in shadow and in sunlight have very different numbers; in HSV, the hue stays roughly the same.
+That separation is why HSV thresholding is the classic first approach to colour detection. It is not perfect, as you will discover on Day 19, but it is a great start.
+
+## Today's exercise
+\`\`\`python
+cap = cv2.VideoCapture(0)
+while True:
+    ok, frame = cap.read()
+    hsv  = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, (100, 120, 70), (130, 255, 255))   # blue-ish
+    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if cnts:
+        c = max(cnts, key=cv2.contourArea)
+        M = cv2.moments(c)
+        if M["m00"] > 0:
+            cx, cy = int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])
+            cv2.circle(frame, (cx, cy), 6, (0, 0, 255), -1)
+    cv2.imshow("track", frame)
+    if cv2.waitKey(1) == 27: break
+\`\`\`
+After the bootcamp, build a live tracker with your webcam. Convert each frame to HSV, threshold to the colour of one of your test cubes, find contours, take the largest, and draw its centre using image moments.
+Tune the HSV range for your cube under your lighting. Write down the range; you reuse it on Day 19.
+
+## Useful cleanups
+- Blur before thresholding to reduce speckle
+- Morphological open/close on the mask to remove holes and noise
+- Ignore contours below a minimum area
+Real masks are noisy. Blur the frame slightly first, then clean the mask with morphological opening and closing, which remove small specks and fill small holes. Ignore contours smaller than a minimum area.
+These three steps make the tracker far steadier. Log the before and after.
+`,
+  key: [
+    'The free OpenCV Bootcamp is the recommended starting point.',
+    'Images are numpy arrays (H, W, 3), in BGR order, indexed row then column.',
+    'HSV separates colour (hue) from brightness, so thresholding is more robust.',
+    'Tracker: HSV → inRange → contours → largest → moments → centre.'
+  ],
+  quiz: [
+    ['In what channel order does OpenCV store colour images by default?', ['RGB', 'BGR', 'HSV', 'CMYK'], 1, 'A classic source of colour bugs.'],
+    ['Why convert to HSV for colour detection?', ['It is smaller', 'Hue separates colour from brightness', 'OpenCV requires it', 'It removes noise'], 1, 'Brightness changes affect H less than BGR.']
+  ]
+});
+
+D({
+  n: 130, icon: '♟️', topic: 'Vision', hours: 2.5, notion: '3f6cdfea8ce2819b9897c84f8155a6e1', svg: 'pinhole',
+  title: 'Calibrate a real camera with a chessboard',
+  goal: "Your webcam's intrinsics and distortion, with a low re-projection error.",
+  tasks: [
+    'Follow the OpenCV camera calibration tutorial. Capture 15–20 chessboard images at varied angles and distances',
+    'Compute camera matrix + distortion. Report the re-projection error',
+    'Undistort a live frame. Compare with the raw frame',
+    'Save intrinsics to YAML/JSON',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['OpenCV Camera Calibration tutorial', 'The canonical walkthrough with full Python code, from chessboard corners to undistortion to re-projection error. Every robotics engineer must be able to do this from memory'],
+    ['What to focus on', 'Camera intrinsics and distortion, and doing a real calibration with a printed chessboard']
+  ],
+  links: [['OpenCV Camera Calibration tutorial', 'https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html']],
+  video: `
+## Why calibrate
+@big Every robotics engineer must be able to do this from memory
+To measure anything in 3D with a camera, you need to know exactly how it maps the world onto pixels. Calibration finds that mapping. The article says every robotics engineer must be able to do it from memory.
+Today you calibrate your own webcam with the printed chessboard, and save the result for the rest of the course.
+
+## The pinhole model
+@eq u = fx · X/Z + cx ·  v = fy · Y/Z + cy | K = [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
+The pinhole model: a 3D point at X, Y, Z in the camera frame lands on the image at u, v. Divide by depth Z, scale by the focal lengths fx and fy in pixels, and shift by the principal point cx, cy, roughly the image centre.
+Those four numbers form the camera matrix K, the intrinsics. They belong to the camera and lens, and do not change when the camera moves.
+
+## Lens distortion
+- Radial: straight lines bow outward (barrel) or inward (pincushion)
+- Tangential: lens slightly tilted relative to the sensor
+- Five coefficients: k1, k2, p1, p2, k3
+Real lenses are not perfect pinholes. Radial distortion bends straight lines, especially near the edges: cheap webcams often show barrel distortion. Tangential distortion comes from a slightly tilted lens.
+OpenCV models these with five coefficients. Calibration estimates them alongside K, so you can undo the distortion.
+
+## Capturing good images
+- 15–20 images, chessboard fully visible and flat
+- Vary angle, distance and position: corners and edges of the frame too
+- Sharp, well lit, no motion blur
+Calibration quality depends on the images. Take fifteen to twenty, with the board fully visible and perfectly flat, tilted at different angles, near and far, and placed in every part of the frame, including the corners where distortion is strongest.
+Avoid blur. Mounting the board on stiff card or a clipboard keeps it flat, which matters more than people expect.
+
+## Calibrate
+\`\`\`python
+pattern = (9, 6)                       # inner corners
+objp = np.zeros((9 * 6, 3), np.float32)
+objp[:, :2] = np.mgrid[0:9, 0:6].T.reshape(-1, 2) * 0.025   # 25 mm squares
+objpts, imgpts = [], []
+for f in glob.glob("calib/*.jpg"):
+    gray = cv2.cvtColor(cv2.imread(f), cv2.COLOR_BGR2GRAY)
+    ok, corners = cv2.findChessboardCorners(gray, pattern)
+    if ok:
+        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1),
+                                   (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-3))
+        objpts.append(objp); imgpts.append(corners)
+rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(objpts, imgpts, gray.shape[::-1], None, None)
+print("re-projection error:", rms)
+\`\`\`
+Following the tutorial: describe the board's corners in 3D using the real square size, find the corners in each image with sub-pixel refinement, then call calibrate camera. It returns K, the distortion coefficients, and the re-projection error.
+Measure your printed squares with a ruler; printers scale. A wrong square size gives wrong distances later.
+
+## Check and save
+| Re-projection error | Verdict |
+|---|---|
+| below 0.5 px | excellent |
+| 0.5 – 1 px | fine for this course |
+| above 1 px | retake images: blur, bent board, poor coverage |
+The re-projection error is the average distance, in pixels, between where the corners were detected and where the model predicts them. Under half a pixel is excellent; under one is fine; above that, retake your images.
+Then undistort a live frame and compare it with the raw one: lines near the edges should straighten. Save K and the distortion to a YAML or JSON file, and log fx, fy, cx and cy.
+`,
+  key: [
+    'Pinhole model: u = fx·X/Z + cx, v = fy·Y/Z + cy; K holds the intrinsics.',
+    'Distortion: radial and tangential, five coefficients.',
+    '15–20 sharp images of a flat board, covering the whole frame.',
+    'Re-projection error < 1 px is fine; save K and distortion to a file.'
+  ],
+  quiz: [
+    ['What does the re-projection error measure?', ['Image brightness', 'Average pixel distance between detected and predicted corners', 'Focal length', 'Number of images'], 1, 'Lower is better; under 1 px is fine.'],
+    ['Why measure your printed chessboard squares?', ['For decoration', 'Printers scale; a wrong size gives wrong 3D distances', 'OpenCV needs inches', 'To check colour'], 1, 'The square size sets the metric scale.']
+  ]
+});
+
+D({
+  n: 131, icon: '📍', topic: 'Vision', hours: 3, notion: '3f6cdfea8ce28117ac44cdeb4e3c09cb', svg: 'pinhole',
+  title: 'Pixel → 3D position (and break it with lighting)',
+  goal: "Estimate a coloured object's 3D position from one calibrated camera, then make it fail and fix it.",
+  tasks: [
+    'Detect your coloured cube. Use its known size + intrinsics (pinhole model) to estimate distance and X/Y relative to the camera',
+    'Check against a tape measure at 3 distances',
+    'Change the lighting (lamp on/off, daylight). Watch detection fail',
+    'Fix it (better HSV range, normalise brightness, adaptive threshold, or detect shape instead)',
+    'Write the failure-and-fix story. Push to `month-5/vision-3d/`',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (Vision)', 'Practice task: calibrate an actual camera with a printed chessboard, save the intrinsics, then write a script that detects a coloured object and estimates its position in 3D relative to the camera. Then move the lighting and watch it fail, and fix it. That failure-and-fix write-up is portfolio material'],
+    ['What to focus on', 'Pinhole projection, and the difference between image coordinates and world coordinates\nWhy lighting changes break vision pipelines that worked yesterday']
+  ],
+  links: [['OpenCV Camera Calibration tutorial', 'https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html']],
+  video: `
+## Image versus world coordinates
+@eq pixel (u, v) → ray from the camera · need depth Z to get a 3D point
+The article's first focus: the difference between image coordinates and world coordinates. A pixel is not a position; it is a direction, a ray out of the camera. Every point along that ray lands on the same pixel.
+To get a 3D point, you need one more number: the depth, Z. Today you get it from something you know: the cube's real size.
+
+## Depth from known size
+@eq Z = fx · W_real / w_pixels | a 4 cm cube that looks 80 px wide, fx = 800 → Z = 0.40 m
+Run the pinhole model backwards. An object of real width W appears w pixels wide at depth Z, where w equals fx times W over Z. Rearranged, the depth is fx times the real width divided by the width in pixels.
+Your cube is a known size, so measure its width in pixels, from the contour's bounding box, and you have its distance. Closer means bigger, exactly as you would expect.
+
+## Then X and Y
+\`\`\`python
+x, y, w, h = cv2.boundingRect(c)
+u, v = x + w / 2, y + h / 2                 # centre pixel
+Z = fx * CUBE_W / w
+X = (u - cx) * Z / fx
+Y = (v - cy) * Z / fy
+print(f"cube at X={X:.3f} Y={Y:.3f} Z={Z:.3f} m (camera frame)")
+\`\`\`
+With Z known, the pinhole equations give X and Y: take the pixel offset from the principal point, multiply by depth, divide by the focal length. Use the undistorted image, or undistort the centre point, so the intrinsics apply.
+The result is the cube's position in the camera frame: x right, y down, z forward, the optical frame from Module 4.
+
+## Check with a tape measure
+| True distance | Estimated Z | Error |
+|---|---|---|
+| 0.30 m | | |
+| 0.50 m | | |
+| 0.80 m | | |
+Place the cube at three measured distances and compare. Expect errors of a few percent, growing with distance, because a one-pixel width error matters more when the cube is small in the image.
+If the error is large and consistent, check the square size used in calibration and the cube's real width. If it is noisy, smooth the mask more.
+
+## Now break it
+@big It worked yesterday — then the lighting changed
+The second focus: why lighting changes break vision pipelines that worked yesterday. Switch a lamp on and off, or move to daylight by a window. Watch the detection flicker, shrink, or vanish.
+The HSV range you tuned is narrower than reality. Shadows lower value and saturation; warm bulbs shift hue; highlights wash colour out to white. The mask breaks, the width is wrong, and so is the depth.
+
+## Fix it, and write it up
+- Widen and re-tune the HSV range across all lighting conditions
+- Normalise brightness (e.g. equalise the V channel, CLAHE)
+- Lock the webcam's auto-exposure and white balance if possible
+- Or detect by shape, not just colour
+Try fixes one at a time: tune the HSV range using frames from every lighting condition; equalise the brightness channel; lock the webcam's auto exposure and white balance; or detect the cube by its square shape rather than colour alone.
+The article says the failure-and-fix write-up is portfolio material. Show the failure, the cause, the fix, and the numbers before and after. Push it and tick the practice task.
+`,
+  key: [
+    'A pixel is a ray; you need depth Z to get a 3D point.',
+    'Depth from known size: Z = fx·W_real / w_pixels; then X, Y from the pinhole model.',
+    'Check against a tape measure; errors grow with distance.',
+    'Lighting breaks colour thresholds; fix, measure, and write up the story.'
+  ],
+  quiz: [
+    ['A 4 cm cube appears 40 px wide and fx = 800. What is its distance?', ['0.4 m', '0.8 m', '1.6 m', '0.2 m'], 1, 'Z = 800 × 0.04 / 40 = 0.8 m.'],
+    ['Why does a pixel alone not give a 3D position?', ['Pixels are too small', 'Every point along the same ray hits the same pixel', 'OpenCV forbids it', 'The image is BGR'], 1, 'You need depth.']
+  ]
+});
+
+D({
+  n: 132, icon: '☁️', topic: 'Vision', hours: 2.5, notion: '3f6cdfea8ce28111afe1e205eedf6f06', svg: 'pointcloud',
+  title: 'Depth sensing + point clouds with Open3D',
+  goal: 'Find a table and the objects on it in a point cloud.',
+  tasks: [
+    'Read: stereo vs structured light vs time-of-flight (one paragraph each in your notes)',
+    'Open3D tutorials: voxel downsample, normals, RANSAC plane segmentation, DBSCAN clustering on a sample cloud',
+    'Pipeline: remove the table plane → cluster → bounding box per object',
+    "Watch one Cyrill Stachniss lecture (EKF or graph SLAM) to connect this to Month 4's SLAM",
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['What to focus on', 'Depth from stereo versus structured light versus time-of-flight\nPoint cloud basics: downsampling, plane fitting to find a table, clustering to find objects on it'],
+    ['Cyrill Stachniss lectures', 'Full university lecture recordings on mobile sensing, photogrammetry and SLAM, and the best free source on the geometric side: projective geometry, bundle adjustment, EKF and graph SLAM']
+  ],
+  links: [
+    ['Open3D point cloud tutorials', 'https://www.open3d.org/docs/release/tutorial/geometry/pointcloud.html'],
+    ['Cyrill Stachniss lectures, University of Bonn', 'https://www.ipb.uni-bonn.de/online-training-robotics/']
+  ],
+  video: `
+## Three ways to sense depth
+| Method | How | Strengths / weaknesses |
+|---|---|---|
+| stereo | two cameras, triangulate matching pixels | works outdoors; fails on blank surfaces |
+| structured light | project a pattern, see how it bends | accurate up close; sunlight washes it out |
+| time-of-flight | time a light pulse's round trip | fast, dense; struggles with shiny or dark surfaces |
+Yesterday you got depth from a known size. Depth cameras measure it per pixel. Stereo uses two cameras and triangulates matching points, like your eyes; it struggles on blank walls with nothing to match.
+Structured light projects a known pattern and measures how it deforms; accurate indoors, blinded by sunlight. Time of flight times a light pulse's round trip. Write one paragraph on each in your notes.
+
+## From depth image to point cloud
+@eq X = (u − cx)·Z/fx ·  Y = (v − cy)·Z/fy | for every pixel with a depth
+A depth image gives Z for every pixel. Apply yesterday's equations to every pixel, and you get a point cloud: hundreds of thousands of 3D points. Add colour from the RGB image, and you have a coloured 3D snapshot of the scene.
+No depth camera? Open3D's sample clouds are enough, as the gear list says. The processing is identical.
+
+## Downsample and normals
+\`\`\`python
+import open3d as o3d
+pcd = o3d.io.read_point_cloud("tabletop.ply")
+down = pcd.voxel_down_sample(voxel_size=0.01)          # one point per 1 cm cube
+down.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.03, max_nn=30))
+o3d.visualization.draw_geometries([down])
+\`\`\`
+Raw clouds are huge, so first downsample with a voxel grid: divide space into small cubes and keep one averaged point per cube. A one-centimetre voxel typically cuts the cloud by ten times or more with little loss.
+Then estimate normals, the surface direction at each point, which many later steps use. Always visualise after each step.
+
+## Find the table with RANSAC
+\`\`\`python
+plane, inliers = down.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
+table   = down.select_by_index(inliers)
+objects = down.select_by_index(inliers, invert=True)
+\`\`\`
+The article's pipeline: plane fitting to find the table. RANSAC picks three random points, fits a plane, counts how many points lie within a centimetre of it, and repeats a thousand times, keeping the best. The biggest plane in a tabletop scene is the table.
+Split the cloud into table inliers and everything else. What is left is the objects, plus some clutter.
+
+## Cluster the objects
+\`\`\`python
+labels = np.array(objects.cluster_dbscan(eps=0.02, min_points=20))
+for k in range(labels.max() + 1):
+    obj = objects.select_by_index(np.where(labels == k)[0])
+    box = obj.get_axis_aligned_bounding_box()
+    print(k, box.get_center(), box.get_extent())
+\`\`\`
+Then cluster: DBSCAN groups points that are within a small distance of each other, so each separate object becomes its own cluster. Tune eps, the neighbour distance, and the minimum cluster size.
+Put a bounding box around each cluster and print its centre and size. That is the input a grasp planner needs: where each object is and how big. Log how many objects you found.
+
+## Connect it to SLAM
+- Point clouds + transforms = 3D maps
+- Stachniss lectures: EKF SLAM and graph SLAM, the theory behind SLAM Toolbox
+- Watch one lecture today
+Point clouds plus the transforms from last week are exactly how 3D maps are built. To close the loop with Module 4, watch one Cyrill Stachniss lecture on EKF SLAM or graph SLAM; the article calls his lectures the best free source on the geometric side.
+SLAM Toolbox is a graph SLAM system. Now you will know what that means.
+`,
+  key: [
+    'Depth: stereo (triangulation), structured light (pattern), time-of-flight (timing).',
+    'Depth image + intrinsics → point cloud, one point per pixel.',
+    'Pipeline: voxel downsample → RANSAC table plane → DBSCAN clusters → boxes.',
+    'Point clouds + transforms = 3D maps; Stachniss explains the SLAM theory.'
+  ],
+  quiz: [
+    ['Which depth method fails on a blank white wall?', ['Time-of-flight', 'Stereo', 'Structured light', 'All equally'], 1, 'Stereo needs texture to match pixels.'],
+    ['What is RANSAC used for in the tabletop pipeline?', ['Downsampling', 'Finding the table plane', 'Clustering objects', 'Colouring points'], 1, 'Fit the dominant plane robustly.']
+  ]
+});
+
+D({
+  n: 133, icon: '🔁', topic: 'Review', hours: 2, notion: '3f6cdfea8ce281ecab33fc7390328291', svg: 'pinhole',
+  title: 'Week 3 review + catch-up',
+  goal: 'IK and vision solid before MoveIt.',
+  tasks: [
+    'Finish unfinished tasks from M5 Days 15–20',
+    'Without notes: turn a pixel + depth into a 3D point using fx, fy, cx, cy',
+    'Look at the Month 6 gear list — you order on Day 22',
+    'Update Confidence on Days 15–20'
+  ],
+  links: [['OpenCV Camera Calibration tutorial', 'https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html']],
+  video: `
+## One calculation without notes
+@eq pixel (420, 300), Z = 0.5 m, fx = fy = 800, cx = 320, cy = 240 → X = ?, Y = ?
+Review day, starting with one calculation without notes: a pixel at 420, 300, depth half a metre, focal lengths 800, principal point 320, 240. What are X and Y?
+X is 420 minus 320, times 0.5, over 800: 6.25 centimetres. Y is 300 minus 240, times 0.5, over 800: 3.75 centimetres. If that felt easy, the pinhole model is yours.
+
+## The week in one table
+| Idea | One line |
+|---|---|
+| Jacobian | joint speeds → end-effector velocity |
+| singularity | J loses rank; a direction is lost |
+| numerical IK | iterate damped least squares until close |
+| calibration | K + distortion from a chessboard, error < 1 px |
+| pixel → 3D | need depth; Z from known size or a depth camera |
+| point clouds | downsample, RANSAC plane, DBSCAN clusters |
+Here is the week compressed: Jacobians and singularities, numerical IK, calibration, pixel to 3D, and point clouds. These are the pieces underneath MoveIt and every pick-and-place system.
+Next section puts them together: MoveIt uses IK and collision checking, and perception tells it where objects are.
+
+## Check your three projects
+- so101-kinematics: FK table, IK errors, the singularity demo, joint vs Cartesian paths
+- vision-3d: calibration error, distance table, the lighting failure-and-fix story
+- Notes: depth sensing paragraphs, point cloud pipeline output
+Check the portfolio pieces. The kinematics repo should show the FK comparison, IK errors for the five targets, the singularity demonstration and the path comparison. The vision repo should have the calibration error, the distance table, and the failure-and-fix story.
+Fill any gaps today.
+
+## Look at Month 6 gear
+- Hugging Face account and LeRobot with policy extras
+- Desk lamp for consistent lighting; a second USB camera with a mount
+- A training GPU: Colab or a cloud GPU
+Also today: look at the Module 6 gear list; you order on day 22. It is mostly accounts and software: a Hugging Face account, LeRobot, and access to a GPU for training, Colab or cloud.
+The hardware is a desk lamp for consistent lighting, which, after Day 19, you know why, and a second camera with a mount for better recordings. Next section: MoveIt 2 and manipulation.
+`,
+  key: [
+    'Pixel + depth → 3D with X = (u−cx)Z/fx, Y = (v−cy)Z/fy.',
+    'Jacobian, singularities and damped IK underpin MoveIt.',
+    'Calibration, pixel-to-3D and point clouds give MoveIt object positions.',
+    'Plan Month 6 gear: HF account, GPU access, lamp, second camera.'
+  ],
+  quiz: [
+    ['u = 420, cx = 320, Z = 0.5 m, fx = 800. What is X?', ['0.0625 m', '0.25 m', '0.5 m', '0.125 m'], 0, '(420−320)·0.5/800.'],
+    ['Why is a desk lamp on the Month 6 gear list?', ['To read at night', 'Consistent lighting, because vision and policies break when lighting changes', 'To heat servos', 'Calibration requires it'], 1, 'You saw this on Day 19.']
+  ]
+});
 // @@END

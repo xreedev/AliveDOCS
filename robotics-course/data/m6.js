@@ -985,4 +985,478 @@ Then you pick your direction and plan your capstone. Update your Confidence rati
     ['What is the best answer to "tell me about a project you are proud of"?', ['A list of tools used', 'A short story: task, before number, diagnosis, fix, after number', 'Your course certificate', 'The training loss'], 1, 'Numbers and reasoning.']
   ]
 });
+
+// ───────────── Section 3 · Reinforcement learning and the capstone plan ─────────────
+D({
+  n: 155, icon: '🎓', topic: 'RL', hours: 2.5, notion: '3f6cdfea8ce2818d89ebd2647d135bf9', svg: 'rl',
+  title: 'Deep RL foundations (CS 285)',
+  goal: 'The core ideas of RL in robotics language before you train a policy.',
+  tasks: [
+    'Watch the CS 285 lectures on imitation learning and on policy gradients (or their slides)',
+    'Write: state, action, reward, policy, return; and how RL differs from what you did with ACT',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['CS 285, Sergey Levine', 'The best RL course available, and Levine is a robotics researcher so the framing is robotics-native throughout, covering imitation learning, policy gradients, actor-critic, model-based and offline RL']],
+  links: [['CS 285, Deep Reinforcement Learning, UC Berkeley', 'https://rail.eecs.berkeley.edu/deeprlcourse']],
+  video: `
+## From imitation to reinforcement
+@svg rl | act → observe a reward → improve
+Last section the robot learned by copying you. Reinforcement learning is different: no demonstrations. The robot tries actions, receives a reward saying how well it did, and gradually improves its behaviour to collect more reward.
+The article recommends Sergey Levine's CS 285 from Berkeley as the best RL course available, and robotics-native throughout, because Levine is a robotics researcher.
+
+## The vocabulary
+| Term | Meaning | Quadruped example |
+|---|---|---|
+| state s | what describes the situation | joint angles, body velocity, orientation |
+| action a | what the agent does | target joint positions |
+| reward r | a number: how good was that step | forward speed − energy used |
+| policy π(a given s) | the behaviour being learned | a neural network |
+| return | total (discounted) future reward | walk far, fast, efficiently |
+Five words carry most of RL. The state describes the situation. The action is what the agent does. The reward is a single number scoring each step. The policy is the behaviour, usually a neural network mapping states to actions.
+The return is the total future reward, usually discounted so near-term reward counts more. RL tries to find the policy with the highest expected return. Write these definitions in your own words today.
+
+## How RL differs from ACT
+| | Imitation (ACT) | Reinforcement learning |
+|---|---|---|
+| learns from | your demonstrations | its own trial and error |
+| needs | a human to demonstrate | a reward function and a simulator |
+| limit | can't beat the demonstrator | can discover new behaviours |
+| risk | copies your mistakes | exploits a badly designed reward |
+Compare with ACT. Imitation learns from your demonstrations; RL learns from its own trial and error. Imitation needs a human; RL needs a reward function and, practically, a simulator, because it takes millions of tries.
+Imitation cannot do better than the demonstrator. RL can discover behaviours nobody showed it, but it will happily exploit a badly designed reward. You will see that on Day 17.
+
+## Policy gradients, in one idea
+@eq increase the probability of actions that led to high return; decrease it for low return
+The policy gradient idea is simple at heart. Run the policy, collect some episodes, and look at the returns. Nudge the network to make actions that led to high returns more likely, and those that led to low returns less likely. Repeat.
+PPO, the algorithm behind most locomotion results, is a careful, stable version of this. Actor-critic methods add a second network that estimates how good each state is, to reduce noise.
+
+## Why robots train in simulation
+- Millions of steps: impossible on real hardware in reasonable time
+- Falling over thousands of times breaks real robots
+- GPU simulators run thousands of robots in parallel
+- Then: sim-to-real transfer, with domain randomisation
+RL needs millions of attempts, and a learning robot falls over thousands of times. That is why locomotion is trained in simulation: GPU simulators run thousands of robots in parallel, collecting years of experience in hours.
+The trained policy is then transferred to the real robot, a step called sim-to-real, helped by randomising physics in simulation so the policy copes with reality's differences. Tomorrow you train one.
+
+## Watch and write
+- CS 285: the imitation learning lecture, then policy gradients
+- Write: state, action, reward, policy, return
+- Write: three differences between RL and what you did with ACT
+Today, watch the CS 285 lectures on imitation learning and on policy gradients, or read their slides. The imitation lecture will now feel familiar, and the policy gradient lecture builds directly on it.
+Then write the five definitions and three differences between RL and your ACT project in your log.
+`,
+  key: [
+    'RL learns from trial and error and a reward, not demonstrations.',
+    'State, action, reward, policy, return — the core vocabulary.',
+    'Policy gradients: make high-return actions more likely (PPO is a stable version).',
+    'Robots train RL in GPU simulation, then transfer sim-to-real.'
+  ],
+  quiz: [
+    ['What does RL need that imitation learning does not?', ['Demonstrations', 'A reward function (and usually a simulator)', 'A leader arm', 'A camera'], 1, 'It learns from its own trial and error.'],
+    ['Why is locomotion RL trained in simulation?', ['Simulators look nicer', 'It needs millions of attempts and many falls', 'Real robots cannot run neural networks', 'Rewards only exist in simulation'], 1, 'Parallel GPU sims collect experience fast and safely.']
+  ]
+});
+
+D({
+  n: 156, icon: '🐕', topic: 'RL', hours: 3, notion: '3f6cdfea8ce28162a551cdf4491e8620', svg: 'rl',
+  title: 'Train a quadruped in MuJoCo Playground',
+  goal: 'A locomotion policy trained from a Colab tutorial.',
+  tasks: [
+    'Open a MuJoCo Playground locomotion Colab. Run it end to end on Colab\'s GPU',
+    'Read the environment code: observation, action, reward terms',
+    'Save the rollout video',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['MuJoCo Playground', 'GPU-accelerated environments for locomotion, manipulation and vision tasks with four Colab tutorials, and far easier to get running than the alternatives. Start here']],
+  links: [['MuJoCo Playground', 'https://github.com/google-deepmind/mujoco_playground']],
+  video: `
+## MuJoCo Playground
+@big Start here: far easier to get running than the alternatives
+Today you train a walking quadruped. The tool is MuJoCo Playground, from Google DeepMind: GPU-accelerated environments for locomotion, manipulation and vision, with Colab tutorials. The article says it is far easier to get running than the alternatives, so start here.
+You need no hardware and no GPU beyond what Colab gives you for free.
+
+## Run the Colab end to end
+- Open the locomotion tutorial Colab from the Playground repo
+- Runtime → change runtime type → GPU
+- Run every cell: install, load environment, train with PPO, render a rollout
+Open one of the locomotion Colab tutorials linked from the Playground repository. Switch the runtime to a GPU, then run each cell in order: install, load a quadruped environment, train it with PPO, and render a video of the result.
+Training runs thousands of simulated robots in parallel on the GPU, so it finishes in minutes rather than days. Watch the reward curve climb as it trains.
+
+## Read the environment: observations
+\`\`\`text
+observation (what the policy sees):
+  body angular velocity, gravity direction in the body frame
+  joint positions and velocities (relative to a default pose)
+  last action
+  the command: desired forward / sideways speed and turn rate
+\`\`\`
+Now read the environment code, which is the real lesson. First, the observation: what the policy sees each step. Typically body angular velocity, the gravity direction as felt by the body, joint positions and velocities, the previous action, and the speed command it should follow.
+Notice there is no camera: this is blind locomotion, driven by the robot's sense of its own body, like walking with your eyes closed.
+
+## Actions and the control loop
+@eq policy (≈50 Hz) → target joint positions → PD controllers (≈ 500 Hz+) → torques
+The action is usually a target position for each joint, offset from a standing pose. A low-level PD controller, the same P and D terms from Module 5, turns those targets into torques at a much higher rate.
+That layering is how real legged robots work: a learned policy decides where joints should go, and classic control gets them there. Everything you learned connects here.
+
+## The reward terms
+| Term | Sign | Encourages |
+|---|---|---|
+| tracking linear velocity | + | follow the commanded speed |
+| tracking angular velocity | + | follow the commanded turn |
+| torque / energy | − | efficiency |
+| action rate | − | smooth, non-jittery motion |
+| feet air time | + | proper stepping, not shuffling |
+| base height / orientation | − | stay upright, level |
+The reward is a weighted sum of terms. Positive terms reward tracking the commanded speed and turn rate, and lifting feet properly. Negative terms penalise energy, jerky actions, and tilting or sagging.
+Find these terms in the code and write them in your log, with their weights. The weights are where the behaviour lives, and tomorrow you change one.
+
+## Save the video
+- Render a rollout at the end of training
+- Download it: this is the "before" video for tomorrow
+- Note the gait: trot? bound? how high do the feet lift?
+Render and download a rollout video. It is the before video for tomorrow's experiment. Describe the gait in your log: is it trotting, with diagonal legs together, or bounding, or something odd? How high do the feet lift? How smooth is it?
+Precise descriptions now make tomorrow's comparison meaningful.
+`,
+  key: [
+    'MuJoCo Playground: GPU locomotion training in Colab, free.',
+    'Observations: body sensing and joint states, plus a speed command — no camera.',
+    'Actions: joint targets tracked by PD controllers at a higher rate.',
+    'The reward is a weighted sum of terms; the weights shape the behaviour.'
+  ],
+  quiz: [
+    ['What turns the policy\'s joint targets into torques?', ['The camera', 'A low-level PD controller', 'The reward function', 'Colab'], 1, 'Learned policy on top, classic control underneath.'],
+    ['What does a negative "action rate" reward term encourage?', ['Faster running', 'Smooth, non-jittery motion', 'Higher jumps', 'More energy use'], 1, 'It penalises rapid action changes.']
+  ]
+});
+
+D({
+  n: 157, icon: '🎚️', topic: 'RL', hours: 3, notion: '3f6cdfea8ce281afa6cdd44307945843', svg: 'rl',
+  title: 'Change the reward, watch the gait change',
+  goal: 'Finish the RL practice task — see reward design shape behaviour.',
+  tasks: [
+    'Change one reward weight (e.g. energy penalty, foot clearance, forward speed). Retrain',
+    'Compare videos side by side. Describe the gait change',
+    'Push to `month-6/rl-quadruped/` with both videos and what you changed',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Practice task (RL)', 'Practice task: train a quadruped locomotion policy in MuJoCo Playground from one of the Colab tutorials, then change the reward function and observe how the gait changes. You do not need hardware and you do not need a GPU beyond what Colab gives you free']],
+  links: [['MuJoCo Playground', 'https://github.com/google-deepmind/mujoco_playground']],
+  video: `
+## The practice task
+@big Change the reward → the behaviour changes
+Today's practice task: change the reward function and observe how the gait changes. It is the most direct way to understand RL, because the reward is the only thing telling the robot what you want.
+Change one weight, retrain, and compare the videos side by side.
+
+## Pick one weight
+| Change | Likely effect |
+|---|---|
+| energy/torque penalty × 10 | slower, lower, more efficient gait |
+| feet air time × 3 | high, exaggerated steps |
+| action-rate penalty → 0 | jittery, twitchy legs |
+| forward speed command ↑ | bounding or galloping |
+Choose one weight to change, and only one, so you know what caused the difference. A much larger energy penalty usually gives a slower, lower, more efficient gait. Rewarding air time gives high, prancing steps.
+Removing the smoothness penalty usually makes the legs jitter. Raising the speed command can switch the gait from trotting to bounding. Write your prediction before you train.
+
+## Retrain and compare
+- Same Colab, same seed and training steps, one weight changed
+- Render a rollout with the same command
+- Put both videos side by side
+Retrain with everything else identical: same number of steps, same random seed if you can, same speed command for the rollout. Then render the video and put it next to yesterday's.
+Describe the difference precisely: step height, speed, body height, smoothness, which legs move together. Was your prediction right?
+
+## Reward hacking
+- RL optimises exactly what you wrote, not what you meant
+- Classic hacks: vibrating in place, sliding, flipping, exploiting physics glitches
+- If it happens: you found a gap in your reward — a great story
+Sometimes the result is bizarre: the robot shuffles, vibrates, slides on its knees, or exploits a simulator glitch. This is reward hacking. RL optimises exactly the reward you wrote, not what you meant.
+If you see it, celebrate: you have found a real gap in the reward design, and it makes an excellent story for your README and interviews.
+
+## Why this matters on real robots
+- Real-world legged robots are trained this way, then transferred
+- Reward design is a core skill of RL engineers
+- Domain randomisation: vary friction, mass, delays so the policy survives reality
+Real legged robots are trained exactly like this and then transferred to hardware. Much of an RL engineer's work is reward design: choosing terms and weights that produce useful, safe behaviour.
+The other major part is domain randomisation: varying friction, masses and sensor delays during training, so the policy is robust to the gap between simulation and reality.
+
+## Push the project
+\`\`\`text
+month-6/rl-quadruped/
+  README.md   two videos side by side at the top
+              the reward terms, and the one weight you changed
+              your prediction vs what happened
+  notebook link (Colab)
+\`\`\`
+Push the project: both videos side by side at the top of the README, a table of the reward terms, the weight you changed, your prediction, and what actually happened. Link the Colab notebook.
+Tick the practice task. You have now used imitation learning and reinforcement learning, the two pillars of robot learning.
+`,
+  key: [
+    'Change one reward weight; keep everything else identical.',
+    'Predict, retrain, compare videos side by side, and describe precisely.',
+    'Reward hacking: RL optimises what you wrote, not what you meant.',
+    'Reward design and domain randomisation are core RL engineering skills.'
+  ],
+  quiz: [
+    ['What is reward hacking?', ['Stealing rewards', 'The policy exploiting the reward as written in unintended ways', 'A faster PPO', 'Changing the seed'], 1, 'Optimises what you wrote, not what you meant.'],
+    ['Why change only one reward weight at a time?', ['Colab limits changes', 'So you know which change caused the behaviour difference', 'More weights crash training', 'It is faster'], 1, 'A controlled experiment.']
+  ]
+});
+
+D({
+  n: 158, icon: '🤖', topic: 'RL', hours: 2, notion: '3f6cdfea8ce2818dbf13f3d597d29f44', svg: 'rl',
+  title: 'Isaac Lab overview (read-only unless RTX)',
+  goal: 'Know what Isaac Lab is for, so you can talk about it, even without the hardware.',
+  tasks: [
+    'Read the Isaac Lab README and one example environment',
+    'Write: when you would choose Isaac Lab over MuJoCo Playground',
+    'If you have an RTX 16 GB GPU: run one pre-built training environment',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['NVIDIA Isaac Lab', 'Sixteen robot models and thirty-plus pre-built training environments, integrating RSL RL, skrl, RL Games and Stable Baselines. The industry standard for legged and humanoid sim-to-real, and it needs the RTX hardware from month four']],
+  links: [['NVIDIA Isaac Lab', 'https://github.com/isaac-sim/IsaacLab']],
+  video: `
+## The industry standard
+@big Isaac Lab: legged and humanoid sim-to-real
+Isaac Lab, from NVIDIA, is described by the article as the industry standard for legged and humanoid sim-to-real. Many of the walking robots you see in company videos were trained with it or something like it.
+It also needs serious hardware: an RTX GPU with plenty of memory, as you saw in Module 4's simulator decision framework. So for most learners, today is a reading day.
+
+## What it includes
+- Sixteen robot models: quadrupeds, humanoids, arms
+- Thirty-plus pre-built training environments
+- RL libraries plugged in: RSL RL, skrl, RL Games, Stable Baselines
+- Built on Isaac Sim: photoreal rendering, accurate physics, sensors
+Isaac Lab ships with sixteen robot models, including quadrupeds and humanoids, and over thirty ready-made training environments. It integrates the main RL libraries: RSL RL, skrl, RL Games and Stable Baselines.
+It is built on Isaac Sim, so it can render cameras photorealistically, which matters when policies use vision.
+
+## Isaac Lab versus MuJoCo Playground
+| | MuJoCo Playground | Isaac Lab |
+|---|---|---|
+| hardware | Colab's free GPU | RTX GPU, 16 GB+ |
+| setup | minutes | hours |
+| rendering | simple | photoreal, camera-heavy tasks |
+| ecosystem | research, learning | industry legged/humanoid pipelines |
+| use it when | learning, prototyping, no RTX | RTX available + photoreal or company-standard pipeline |
+Today's writing task: when would you choose Isaac Lab over MuJoCo Playground? Playground runs on Colab's free GPU and sets up in minutes. Isaac Lab needs an RTX card and hours of setup, but offers photoreal rendering and the pipelines many companies use.
+A sensible answer: learn and prototype with Playground; move to Isaac Lab when you have the hardware and need photoreal vision or an industry-standard workflow.
+
+## Reading an example environment
+\`\`\`text
+an Isaac Lab locomotion task defines:
+  scene:        robot + terrain (flat, rough, stairs) × thousands of copies
+  observations: like Playground — body state, joints, commands (+ height scan)
+  actions:      joint position targets → PD actuators
+  rewards:      velocity tracking, penalties for torque, jerk, falls
+  events:       domain randomisation — friction, mass, pushes
+  curriculum:   terrain gets harder as the policy improves
+\`\`\`
+Open one example locomotion environment in the repo. You will recognise most of it from yesterday: observations, joint-target actions, reward terms. Two things stand out.
+Events apply domain randomisation: random friction, masses and pushes. A curriculum makes terrain harder as the policy improves, from flat ground to rough ground to stairs. Both are key to sim-to-real.
+
+## If you have the hardware
+- RTX GPU with 16 GB+ VRAM: install Isaac Sim + Isaac Lab
+- Run one pre-built locomotion training environment
+- Otherwise: skip honestly; you can still discuss it confidently
+If you do have an RTX card with sixteen gigabytes or more, install it and run one pre-built locomotion environment. Watch thousands of robots learn to walk at once.
+If not, do not worry. Being able to explain what Isaac Lab is for, how it differs from Playground, and why domain randomisation and curricula matter, is what interviewers expect from most candidates.
+`,
+  key: [
+    'Isaac Lab: the industry standard for legged/humanoid sim-to-real; needs an RTX GPU.',
+    '16 robots, 30+ environments, major RL libraries integrated.',
+    'Choose Playground for learning; Isaac Lab with RTX hardware and photoreal needs.',
+    'Domain randomisation and curricula are key to sim-to-real.'
+  ],
+  quiz: [
+    ['When would you choose Isaac Lab over MuJoCo Playground?', ['Always', 'When you have an RTX GPU and need photoreal rendering or an industry pipeline', 'When you have no GPU', 'For PID tuning'], 1, 'Hardware and needs decide.'],
+    ['What does a training curriculum do in Isaac Lab?', ['Teaches you RL', 'Makes the terrain harder as the policy improves', 'Randomises friction', 'Renders videos'], 1, 'Flat → rough → stairs.']
+  ]
+});
+
+D({
+  n: 159, icon: '🧭', topic: 'Portfolio & career', hours: 2.5, notion: '3f6cdfea8ce281ca8e88e792d0d947f2', svg: 'sensethinkact',
+  title: 'Pick your direction + plan the capstone',
+  goal: 'Choose one direction and plan a capstone that combines what you built.',
+  tasks: [
+    'Read the three directions below. Pick one. Write half a page on why',
+    'Plan a capstone in that direction (5 days of work). Ideas: Direction 1 — a language-conditioned SO-101 task with your own dataset (two objects, "pick the red one"); Direction 2 — your sim robot maps, finds a coloured object with the camera, and navigates to it; Direction 3 — the balancer on ESP-IDF with FreeRTOS tasks, telemetry and a fault-safe state machine',
+    'Write the capstone spec: goal, success metric, what you will measure',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Part two: pick a direction', 'Three directions genuinely exist. Pick one, and let the other two stay at literacy level\nDirection 1: Robot learning and embodied AI\nBest if you want the frontier companies and the highest ceiling\nFocus on: LeRobot, VLA fine-tuning, imitation learning, RL, simulation, PyTorch\nDirection 2: Autonomy and mobile robotics\nBest if you want the largest number of available jobs\nFocus on: ROS 2, Nav2, SLAM, perception, sensor fusion, C++\nDirection 3: Embedded, mechatronics and integration\nBest if you want to work immediately, including as a contractor\nFocus on: firmware, motor control, real-time systems, PLCs, functional safety, system integration'],
+    ['Month 6 Milestone (this one)', 'State which of the three directions you are pursuing, and why']
+  ],
+  links: [['LeRobot documentation', 'https://huggingface.co/docs/lerobot/index']],
+  video: `
+## Pick one direction
+@big Pick one, and let the other two stay at literacy level
+The second half of Module 6 is about getting hired, and it starts with a choice. The article says three directions genuinely exist. Pick one, and let the other two stay at literacy level.
+That does not waste anything you learned: you can talk about all three. But depth in one is what gets you hired. This is a Module 6 milestone: state which direction you are pursuing, and why.
+
+## The three directions
+| Direction | Best if you want | Focus on |
+|---|---|---|
+| 1 · Robot learning & embodied AI | frontier companies, highest ceiling | LeRobot, VLA fine-tuning, imitation, RL, simulation, PyTorch |
+| 2 · Autonomy & mobile robotics | the most available jobs | ROS 2, Nav2, SLAM, perception, sensor fusion, C++ |
+| 3 · Embedded, mechatronics & integration | to work immediately, incl. contracting | firmware, motor control, real-time, PLCs, functional safety, integration |
+Direction one, robot learning and embodied AI: the frontier companies and the highest ceiling, and the most competitive. Direction two, autonomy and mobile robotics: the largest number of jobs. Direction three, embedded, mechatronics and integration: the fastest path to paid work, including contracting.
+Each has a clear focus list. Look back at your logs: which modules did you enjoy most, and where are your strongest projects?
+
+## How to choose
+- Which module did you lose track of time in?
+- Where is your strongest portfolio piece already?
+- What jobs exist where you want to live or work remotely?
+- How soon do you need income?
+Answer four questions honestly. Which module made you lose track of time? Where is your strongest project already? What jobs exist where you live, or remotely? And how soon do you need income?
+If you need work quickly, direction three is often fastest. If you want the frontier and can tolerate competition, direction one. If you want the broadest market, direction two. Write half a page on your choice.
+
+## Capstone ideas
+1. Robot learning: a language-conditioned SO-101 task — two objects, "pick the red one"
+2. Autonomy: your sim robot maps, finds a coloured object with the camera, navigates to it
+3. Embedded: the balancer on ESP-IDF with FreeRTOS tasks, telemetry, a fault-safe state machine
+Then plan a capstone in your direction: about five days of work that combines what you have built. For robot learning: a language-conditioned task on the SO-101, picking the named object of two. For autonomy: your simulated robot maps a world, finds a coloured object with its camera, and navigates to it.
+For embedded: port the balancer to ESP-IDF with FreeRTOS tasks, telemetry, and a state machine that fails safely.
+
+## Write the spec
+\`\`\`text
+capstone/SPEC.md
+  Goal:            one sentence
+  Success metric:  e.g. "≥ 14/20 correct picks", "reaches object in 8/10 runs",
+                   "recovers from 3 fault types without falling"
+  What I measure:  trials, protocol, conditions
+  Scope:           must-have vs nice-to-have
+  Day plan:        day 1 skeleton · day 2 reliability · day 3 finish + video
+\`\`\`
+Write a short spec before you start. One-sentence goal. A measurable success metric, like fourteen out of twenty correct picks. Exactly what you will measure and how. Must-haves versus nice-to-haves. And a day-by-day plan.
+Keep the scope small. A finished, measured, modest capstone beats an ambitious unfinished one every time.
+`,
+  key: [
+    'Pick one direction; keep the other two at literacy level.',
+    'Robot learning: highest ceiling · Autonomy: most jobs · Embedded: fastest to work.',
+    'Choose from enjoyment, existing strengths, local market and income needs.',
+    'Write a capstone spec with a measurable success metric and small scope.'
+  ],
+  quiz: [
+    ['According to the article, which direction offers the largest number of jobs?', ['Robot learning', 'Autonomy and mobile robotics', 'Embedded and integration', 'None'], 1, 'ROS 2, Nav2, SLAM, perception, C++.'],
+    ['What makes a good capstone spec?', ['An ambitious goal with no metric', 'A one-sentence goal, a measurable success metric and small scope', 'A long feature list', 'Only a video plan'], 1, 'Finished and measured beats ambitious and unfinished.']
+  ]
+});
+
+D({
+  n: 160, icon: '🏗️', topic: 'Portfolio & career', hours: 3, notion: '3f6cdfea8ce2812184f8cf24069596c5', svg: 'sensethinkact',
+  title: 'Capstone, day 1',
+  goal: "The capstone's skeleton working end to end, even if badly.",
+  tasks: [
+    'Set up the repo folder `capstone/`. Commit early and often (iterative debugging history matters)',
+    'Get the simplest end-to-end version running',
+    'Log what broke in the README as you go',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['High signal (portfolio)', 'GitHub repos with logged metrics and a commit history that shows iterative debugging, not a finished demo dropped in one commit\nEvidence of real-robot deployment with reliability data, not simulation only\nSystems integration work joining sensors to actuators to planning to control, with video and clear documentation']],
+  links: [['LeRobot repository', 'https://github.com/huggingface/lerobot']],
+  video: `
+## End to end first
+@big Make it work badly, end to end — then make it good
+Capstone day one has one goal: the whole pipeline running end to end, even if badly. Sensors in, decisions made, motors moving, a result you can measure. Quality comes on days two and three.
+The most common capstone failure is perfecting one part and running out of time before the parts connect. Avoid it by connecting everything first.
+
+## What reviewers look for
+- Logged metrics and a commit history showing iterative debugging
+- Real-robot deployment with reliability data, not simulation only
+- Integration: sensors → planning → control → actuators, with video and docs
+The article lists what counts as high signal in a portfolio. Repos with logged metrics and a commit history that shows iterative debugging, not a finished demo dropped in one commit. Evidence of real-robot deployment with reliability data. And integration work joining sensors to actuators to planning to control.
+Your capstone should hit all three. Plan for it from day one.
+
+## Commit early and often
+\`\`\`bash
+git commit -m "capstone: skeleton launch file, nodes stubbed"
+git commit -m "camera detection publishes target pose (noisy)"
+git commit -m "fix: wrong frame for target pose (camera_optical vs camera_link)"
+git commit -m "end-to-end run: 3/10 success, logging trials to CSV"
+\`\`\`
+Commit every time something changes, with honest messages. A history like this tells a reviewer a story: skeleton, first detection, a real bug found and fixed, a first measured result.
+A single "final version" commit tells them nothing, and makes them wonder whether you wrote it. Your iterative history is evidence.
+
+## The skeleton, by direction
+| Direction | Minimal end-to-end version |
+|---|---|
+| robot learning | record 10 demos per object with instructions; train; one deploy |
+| autonomy | launch world + SLAM map + detection node + send one Nav2 goal from detection |
+| embedded | FreeRTOS tasks for IMU, control and telemetry; balancer stands for 10 s |
+Here is what a minimal version looks like per direction. Robot learning: a small dataset with both instructions, a quick training run, one deployment. Autonomy: the world, a map, a detection node, and one Nav2 goal generated from a detection.
+Embedded: separate FreeRTOS tasks for the IMU, control and telemetry, with the balancer standing for ten seconds. Ugly is fine. Connected is the goal.
+
+## Log as you go
+- Keep a "what broke" list in the README, updated live
+- Note each bug: symptom → cause → fix
+- Start the trial log now, even with bad numbers
+Keep a running what-broke list in the README, updated as you work: symptom, cause, fix. It is far easier to write as you go than to reconstruct on day three.
+Start logging trials today, even if the numbers are terrible. A first result of three out of ten is the baseline you will improve from tomorrow.
+`,
+  key: [
+    'Day 1: the whole pipeline end to end, even badly.',
+    'High signal: logged metrics, iterative commits, real deployment, integration.',
+    'Commit early and often with honest messages.',
+    'Log bugs and trial results from the very first run.'
+  ],
+  quiz: [
+    ['Why get the capstone working end to end before polishing parts?', ['It looks better', 'So the parts connect before time runs out; polish comes later', 'Git requires it', 'It is faster to code'], 1, 'Connected beats perfect.'],
+    ['What does a commit history with iterative debugging show a reviewer?', ['Nothing', 'How you actually worked and solved problems', 'That you are slow', 'That the code is finished'], 1, 'Evidence of real engineering.']
+  ]
+});
+
+D({
+  n: 161, icon: '🔁', topic: 'Review', hours: 2, notion: '3f6cdfea8ce281c7aeefdd37113efdab', svg: 'rl',
+  title: 'Week 3 review + capstone catch-up',
+  goal: 'Catch up and keep the capstone moving.',
+  tasks: [
+    'Finish unfinished tasks from M6 Days 15–20',
+    'Continue the capstone',
+    'Update Confidence on Days 15–20'
+  ],
+  links: [['CS 285, Deep Reinforcement Learning', 'https://rail.eecs.berkeley.edu/deeprlcourse']],
+  video: `
+## The week in one table
+| Idea | One line |
+|---|---|
+| RL vocabulary | state, action, reward, policy, return |
+| policy gradients | make high-return actions more likely (PPO) |
+| Playground | free GPU locomotion training in Colab |
+| reward design | change one weight → the gait changes; beware hacking |
+| Isaac Lab | industry standard, RTX needed; randomisation + curricula |
+| direction + capstone | pick one; spec with a metric; end to end first |
+Review day. Here is the week compressed: RL fundamentals, training a quadruped, reward design, Isaac Lab, and choosing your direction and capstone.
+Explain RL versus imitation learning out loud, and why your gait changed when you changed the reward.
+
+## Capstone check-in
+- Does the skeleton run end to end?
+- Is there a first measured result, even a bad one?
+- Is the what-broke list growing?
+- Are commits small and frequent?
+Check the capstone against four questions. Does it run end to end? Is there a first measured result? Is the what-broke list growing? Are commits small and frequent?
+If the skeleton is not connected yet, that is today's only job. Cut scope if you must: drop a nice-to-have, keep the metric.
+
+## Scope triage
+| Keep | Cut |
+|---|---|
+| the success metric and its measurement | extra features |
+| one clean video | multiple variations |
+| the what-broke section | perfect code style |
+If you are behind, triage. Keep the success metric and how you measure it, one clean video, and the what-broke section. Cut extra features, variations and polish.
+A reviewer would rather see a modest system measured honestly than an ambitious one with no numbers.
+
+## Next section
+@svg sensethinkact | make it reliable, finish it, then get hired
+Next section: two more capstone days, making it reliable and then finishing it with a video. Then rewriting your top three READMEs, an open-source contribution, interview preparation, a repo interrogation, and the final milestone test and retro.
+Update your Confidence ratings for days fifteen to twenty, and keep building.
+`,
+  key: [
+    'RL: vocabulary, policy gradients, reward design, sim-to-real tools.',
+    'Capstone: end to end, measured, logged, committed often.',
+    'If behind, cut features — keep the metric, a video and what broke.',
+    'Next: reliability, finishing, READMEs, interviews.'
+  ],
+  quiz: [
+    ['Behind on the capstone, what should you cut first?', ['The success metric', 'Extra features and polish', 'The what-broke section', 'The measurement'], 1, 'Keep the evidence.'],
+    ['What changed the quadruped\'s gait on Day 17?', ['A new robot model', 'A changed reward weight', 'A faster GPU', 'A different camera'], 1, 'The reward defines the behaviour.']
+  ]
+});
 // @@END

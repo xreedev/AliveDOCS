@@ -197,6 +197,13 @@ Use the outer jaws for outside sizes, the small inner jaws for hole diameters, a
 \`\`\`
 Then model a wheel hub. Revolve its body. Cut a D-shaped shaft hole, a circle with one flat side, which stops the hub slipping on a D-shaft motor. Model one spoke, and use a circular pattern to make six. Fillet the joints.
 Notice how the pattern stays linked: change the spoke and all six update. That is parametric design paying off again.
+
+## Order your features well
+- Big shapes first, details last
+- Fillets and chamfers near the end of the feature tree
+- Name important features so you can find them later
+One last habit for today: feature order. Build the big shapes first and add details like fillets and chamfers near the end of the feature tree. Fillets added early tend to break when you later change the shapes underneath them.
+Rename important features too, such as motor holes or shaft bore. In a month, when you reopen the part to change one dimension, you will thank yourself.
 `,
   key: [
     'Core features: extrude/cut, revolve, fillet/chamfer, hole, patterns, mirror.',
@@ -820,6 +827,11 @@ Count your versions. Three to five is normal. Professional product designers ite
 \`\`\`
 Write the README as an iteration story: a photo of every version side by side, a table of what changed in each and what happened, and what broke and how you fixed it.
 This README hits a Module 3 milestone directly: designing a part specifically for FDM, accounting for orientation, overhangs and layer adhesion. Tick the practice task as done.
+
+## The loop you will use forever
+@big Measure → design → make → test → learn
+Step back and notice what you just did. You measured a real object, designed around it with measured clearances, made it, tested it, and learned from each failure until it worked.
+That loop is not specific to enclosures. It is how you will design gripper fingers next section, robot parts in Module 4, and almost everything mechanical for the rest of your career. The faster you can run it, the better your designs become.
 `,
   key: [
     'Diagnose each failure: too stiff, too shallow, wrong orientation, stress at the root.',
@@ -1112,6 +1124,13 @@ Too much preload adds friction, heat and wear, so it is a balance. Even trying i
 Measure version two exactly as before: same pointer, same method. Compare the numbers.
 Then write the README as an engineering story: CAD screenshots, the backlash table across versions, a video of rocking the output, and what broke and how you fixed it.
 A measured improvement, with reasons, is one of the most convincing things you can show. It proves you can diagnose a mechanical problem and fix it, not just print parts. Tick the practice task as done.
+
+## Why this matters for the arm
+- The SO-101's servos have their own internal gearboxes
+- Their backlash limits how precisely the arm can place its gripper
+- Now you know what to look for when a joint feels sloppy
+This lesson connects directly to what comes next. The SO-101 arm you start building tomorrow uses servos with small internal gearboxes, and their backlash limits how precisely the arm can position its gripper.
+When a joint feels sloppy later, you will know exactly what you are feeling, how to measure it, and which causes to check first.
 `,
   key: [
     'Fix the largest backlash contributor first, one or two changes per version.',
@@ -1404,6 +1423,13 @@ The leader has a handle with a trigger instead of a gripper. Squeezing the trigg
 - Tight spot? Check for over-tightened screws, rubbing parts, cable drag
 With the leader unpowered, move each joint slowly through its range. It should feel smooth and consistent. A tight spot usually means an over-tightened screw, a part rubbing, or a cable dragging.
 Fix those now. Tomorrow you calibrate both arms and teleoperate for the first time, and a smooth leader makes that a joy instead of a struggle.
+
+## Keep the two arms apart
+- Label the leader's controller board and USB cable
+- Store calibration files with clear names
+- Never swap a leader servo into the follower
+One practical habit before tomorrow: keep the two arms clearly separated. Label the leader's controller board and cable, and the follower's, so you never plug the wrong one into the wrong command.
+If you ever replace a servo, check whether it is a leader or follower type before fitting it. Mixing them up produces an arm that feels wrong and calibrates strangely.
 `,
   key: [
     'The leader is an input device: you move it, it measures, the follower copies.',
@@ -1584,6 +1610,11 @@ Change one thing, reprint, and retest just that object. One iteration, measured,
 - What broke and how you fixed it
 Now write the README for your SO-101 folder: build photos, the teleoperation video, screenshots of your finger design, the grasp table, and what broke and how you fixed it.
 This meets the Module 3 milestone: a working robot arm you assembled, calibrated and modified with your own parts. Tick the practice task as done. It is a portfolio piece that shows the full range of skills from this module.
+
+## Grasping is a research field
+@big Grasping looks easy for humans and is still hard for robots
+Your small experiment touches on a big research area. Grasping looks effortless for humans and remains one of the hardest problems in robotics: objects vary in shape, weight, friction and softness, and the robot must handle all of them.
+Compliant fingers are one answer, chosen by hardware design. In Module 5 you will meet grasp planning in software, and in Module 6, learned policies that grasp from demonstration. Your fingers will be on the arm for all of it.
 `,
   key: [
     'Define success in advance and keep conditions identical for a fair comparison.',

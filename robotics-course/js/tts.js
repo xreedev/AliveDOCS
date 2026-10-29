@@ -95,7 +95,9 @@
   }
 
   function wordsOf(t) { return (String(t).match(/\S+/g) || []).length; }
+  function pauseOf(text) { var m = /^\[pause (\d+)\]$/.exec(String(text)); return m ? +m[1] : 0; }
   function estimate(text) {
+    if (pauseOf(text)) return pauseOf(text);
     var o = PRESETS[settings.preset].opts;
     return Math.max(0.8, wordsOf(speakable(text)) / (o.speed || 150) * 60 * 1.08);
   }
@@ -113,6 +115,7 @@
 
   // prepare(text) -> Promise<Clip>. Clip: {duration, exact, play(offset, rate) -> {stop(), ended: Promise}}
   function prepare(text) {
+    if (pauseOf(text)) return Promise.resolve(silentClip(pauseOf(text)));
     var say = speakable(text);
     var key = settings.preset + '|' + say;
     if (cache.has(key)) return cache.get(key);

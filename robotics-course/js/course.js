@@ -173,6 +173,17 @@
           links.slice(0, 8).map(function (l) { return plain(l[0]) + (l[2] ? ': ' + plain(l[2]) : '') + '.'; }))
       });
     }
+    var L = 'ABCDEF';
+    (d.quiz || []).forEach(function (q, qi) {
+      scenes.push({
+        kind: 'check', title: 'Quick check' + (d.quiz.length > 1 ? ' ' + (qi + 1) + ' of ' + d.quiz.length : ''), question: q[0], correct: q[2],
+        bullets: q[1].map(function (o, k) { return { text: L[k] + '. ' + o }; }),
+        say: ['Quick check. ' + plain(q[0]),
+          'Is it ' + q[1].map(function (o, k) { return L[k] + ': ' + plain(o).replace(/\.$/, ''); }).join('; or ') + '?',
+          'Pause the video if you want more time to think.', '[pause 3]',
+          'The answer is ' + L[q[2]] + ': ' + plain(q[1][q[2]]).replace(/\.$/, '') + '.', plain(q[3] || '')]
+      });
+    });
     if (d.key && d.key.length) {
       scenes.push({
         kind: 'summary', title: 'Key takeaways', bullets: d.key.map(function (k) { return { text: k }; }),
@@ -188,7 +199,10 @@
     scenes.forEach(function (s, si) {
       s.cueStart = cues.length;
       var ss = [];
-      s.say.forEach(function (para) { ss = ss.concat(sentences(para)); });
+      s.say.forEach(function (para) {
+        if (/^\[pause \d+\]$/.test(para)) ss.push(para); else ss = ss.concat(sentences(para));
+      });
+      if (s.kind === 'check') s.answerAt = ss.findIndex(function (t) { return /^The answer is/.test(t); });
       if (!ss.length) ss = [s.title || '…'];
       ss.forEach(function (text) { cues.push({ s: si, text: text }); });
       s.cueEnd = cues.length;

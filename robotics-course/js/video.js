@@ -329,7 +329,14 @@
     if (this.sceneShown !== c.s) { this.renderScene(c.s); this.sceneShown = c.s; }
     var j = i - s.cueStart, ns = s.cueEnd - s.cueStart;
     var items = this.sceneEl.querySelectorAll('[data-b]');
-    if (items.length) {
+    if (s.kind === 'check') {
+      var revealed = s.answerAt >= 0 && j >= s.answerAt;
+      items.forEach(function (b, k) {
+        b.classList.add('in');
+        b.classList.toggle('right', revealed && k === s.correct);
+        b.classList.toggle('dim', revealed && k !== s.correct);
+      });
+    } else if (items.length) {
       var shown = Math.floor((j + 1) * items.length / ns);
       if (s.kind === 'tasks' || s.kind === 'links' || s.kind === 'summary' || s.kind === 'recap') shown = Math.min(items.length, j);
       if (j === ns - 1) shown = items.length;
@@ -349,7 +356,7 @@
       var cur = q.querySelector('span.now');
       if (cur && q.scrollHeight > q.clientHeight) q.scrollTop = cur.offsetTop - q.clientHeight / 3;
     }
-    this.ccEl.textContent = c.text;
+    this.ccEl.textContent = /^\[pause \d+\]$/.test(c.text) ? '⏸ Think it over…' : c.text;
     if (this.opts.onTime) this.opts.onTime(i);
   };
 
@@ -362,7 +369,10 @@
     var list = bullets ? '<ul class="sc-list' + (s.bullets.length > 6 ? ' dense' : '') + '">' + bullets + '</ul>' : '';
     var v = s.visual;
     var title = s.title ? '<h2 class="sc-title">' + a.md(s.title) + '</h2>' : '';
-    if (v && v.type === 'intro') {
+    if (s.kind === 'check') {
+      h = title + '<div class="sc-check"><p class="sc-q">' + a.md(s.question) + '</p>' +
+        '<ul class="sc-opts">' + s.bullets.map(function (b, k) { return '<li data-b="' + k + '">' + a.md(b.text) + '</li>'; }).join('') + '</ul></div>';
+    } else if (v && v.type === 'intro') {
       h = '<div class="sc-intro"><div class="sc-intro-txt">' +
         '<div class="sc-kicker">Module ' + p.m + ' · ' + a.esc(mod.title) + '</div>' +
         '<div class="sc-daylab">' + a.esc(a.dayLabel(this.n)) + '</div>' +

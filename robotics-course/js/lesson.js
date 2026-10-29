@@ -111,7 +111,7 @@
     var h = '';
     player.scenes.forEach(function (s) {
       h += '<div class="tr-sc"><h4><button data-t="' + s.cueStart + '">' + fmtT(player.startOf(s.cueStart)) + '</button>' + a.md(s.title || 'Introduction') + '</h4><p>' +
-        player.cues.slice(s.cueStart, s.cueEnd).map(function (c, k) { return '<span data-c="' + (s.cueStart + k) + '">' + a.esc(c.text) + '</span>'; }).join(' ') + '</p></div>';
+        player.cues.slice(s.cueStart, s.cueEnd).map(function (c, k) { return '<span data-c="' + (s.cueStart + k) + '">' + (/^\[pause \d+\]$/.test(c.text) ? '<i>(pause)</i>' : a.esc(c.text)) + '</span>'; }).join(' ') + '</p></div>';
     });
     $('#tr').innerHTML = h;
     $('#tr').addEventListener('click', function (e) {

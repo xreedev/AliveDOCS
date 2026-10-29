@@ -246,6 +246,13 @@ code { font-family: var(--mono); font-size: .9em; background: #f5f5f4; padding: 
 .sc-card { flex: 1; display: grid; grid-template-rows: auto 1fr; text-align: center; }
 .sc-card h2 { font: 700 4cqw/1.2 var(--serif); margin: 0 0 2cqw; color: #fff; }
 .sc-card .sc-fig { width: 60%; margin: 0 auto; }
+.sc-check { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.sc-q { font: 600 2.7cqw/1.35 var(--sans); color: #fff; margin: 0 0 2cqw; }
+.sc-opts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.2cqw; }
+.sc-opts li { border: 2px solid #334155; border-radius: 1cqw; padding: 1.1cqw 1.4cqw; font-size: 1.9cqw; line-height: 1.35; color: #e2e8f0; background: #0f172a; transition: all .4s; }
+.sc-opts li.right { border-color: #4ade80; background: rgba(74, 222, 128, .15); color: #fff; }
+.sc-opts li.right::after { content: "  ✓"; color: #4ade80; font-weight: 700; }
+.sc-opts li.dim { opacity: .35; }
 .sc-intro { display: grid; grid-template-columns: 1.25fr 1fr; gap: 3cqw; align-items: center; flex: 1; }
 .sc-kicker { text-transform: uppercase; letter-spacing: .18em; font-size: 1.35cqw; color: #fdba74; font-weight: 700; }
 .sc-daylab { font: 700 1.8cqw var(--mono); color: #2dd4bf; margin: 1.2cqw 0 .4cqw; }

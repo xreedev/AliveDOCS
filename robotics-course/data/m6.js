@@ -1459,4 +1459,479 @@ Update your Confidence ratings for days fifteen to twenty, and keep building.
     ['What changed the quadruped\'s gait on Day 17?', ['A new robot model', 'A changed reward weight', 'A faster GPU', 'A different camera'], 1, 'The reward defines the behaviour.']
   ]
 });
+
+// ───────────── Section 4 · Capstone, portfolio and interviews ─────────────
+D({
+  n: 162, icon: '🏗️', topic: 'Portfolio & career', hours: 3, notion: '3f6cdfea8ce2815b8817d582afa69fbb', svg: 'sensethinkact',
+  title: 'Capstone, day 2: make it reliable',
+  goal: 'From "worked once" to "works most of the time", with a number.',
+  tasks: [
+    'Define the success metric from your spec. Run 10–20 trials',
+    'Fix the top failure. Re-run',
+    'Record the reliability numbers in the README',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Write down what broke', 'Anyone can post a working demo. Almost nobody documents the four things that failed first and how they diagnosed each one. That write-up is the closest thing to proof that you can actually engineer, and it is the reason your repo survives the third follow-up question in an interview']],
+  links: [['Nav2 Tutorials', 'https://docs.nav2.org/rolling/tutorials/']],
+  video: `
+## Worked once is not a result
+@big "It worked once" → "it works 14 times out of 20"
+Capstone day two is about reliability. A system that worked once on camera is a demo. A system that works fourteen times out of twenty, with a log of why the other six failed, is engineering.
+Today you measure, fix the biggest failure, and measure again. The same loop you ran with ACT, now on your own system.
+
+## Measure first
+- Use the success metric from your spec, exactly as written
+- 10–20 trials, varied conditions, the same protocol each time
+- Log every trial: conditions, result, failure type
+Start by running your success metric exactly as your spec defines it: ten to twenty trials, with varied conditions, the same protocol every time. Log every trial with its conditions, result and failure type.
+This is your baseline. Resist fixing anything until the baseline is recorded.
+
+## Fix the top failure
+| Failure type | Count | Fix attempted | After |
+|---|---|---|---|
+| detection misses in shadow | 5 | wider HSV range + exposure lock | 1 |
+| arrives but stops 20 cm short | 2 | goal tolerance tuned | 0 |
+| … | | | |
+Sort the failures by count and attack the top one only. It is usually responsible for most of the problem, and fixing one thing at a time keeps cause and effect clear.
+Then re-run the same trials and record the new count. If the fix worked, move to the next failure. If not, write down why you thought it would, and what you learned.
+
+## Write down what broke
+@big Almost nobody documents the four things that failed first
+The article makes the strongest argument in the course here. Anyone can post a working demo. Almost nobody documents the four things that failed first and how they diagnosed each one.
+That write-up is the closest thing to proof that you can actually engineer, and it is the reason your repo survives the third follow-up question in an interview. Today's failures are exactly that material.
+
+## The what-broke format
+\`\`\`text
+### 1. Detection failed under the desk lamp
+Symptom:   robot drove past the cube in 5/20 trials
+Diagnosis: logged the HSV mask — the cube's hue shifted under warm light
+Fix:       locked exposure + white balance, widened hue range
+Result:    5/20 → 1/20 misses
+\`\`\`
+Use a consistent format for each entry: symptom, diagnosis, fix, result. The diagnosis is the most important line, because it shows how you think: what you logged or measured to find the cause.
+Aim for at least four entries by the end of the capstone. Put the reliability numbers at the top of the README.
+
+## Test the edges
+- Vary conditions on purpose: lighting, object position, battery level, start pose
+- Find where it breaks, not just where it works
+- Write the limits in the README: "works from 0.3 to 1.2 m; fails in direct sunlight"
+Once the common case is reliable, test the edges on purpose. Change the lighting, move the object to the edge of the workspace, run with a half-charged battery, start from an odd pose. Find where it breaks.
+Then write those limits into the README, plainly: the range where it works, and the conditions where it fails. Knowing and stating your system's limits is exactly what senior engineers do.
+`,
+  key: [
+    'Reliability = a measured success rate, not one good run.',
+    'Measure a baseline first, then fix the top failure, then re-measure.',
+    'Document failures as symptom → diagnosis → fix → result.',
+    'The what-broke write-up is what survives interview follow-ups.'
+  ],
+  quiz: [
+    ['Which failure should you fix first?', ['The most interesting one', 'The most frequent one', 'The rarest one', 'All at once'], 1, 'Biggest impact, clear cause and effect.'],
+    ['What is the most important line in a what-broke entry?', ['The title', 'The diagnosis: how you found the cause', 'The date', 'The commit hash'], 1, 'It shows how you think.']
+  ]
+});
+
+D({
+  n: 163, icon: '🎬', topic: 'Portfolio & career', hours: 3, notion: '3f6cdfea8ce2811d8a1ec72d55fa2f27', svg: 'sensethinkact',
+  title: 'Capstone, day 3: finish + video',
+  goal: 'A finished capstone with a 60–90 second video.',
+  tasks: [
+    'Final run. Record the video (show success, one failure, and the metric)',
+    'Architecture diagram (sensors → perception → planning → control → actuators)',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Conclusion', 'What it will make you is someone who can build, debug and ship working robots, who understands the stack from the electrical layer up to the learned policy, and who has the physical portfolio to prove it']],
+  links: [['LeRobot documentation', 'https://huggingface.co/docs/lerobot/index']],
+  video: `
+## Finish line
+@big Build, debug and ship working robots
+Capstone day three: finish it. A final run, a video, and an architecture diagram. The article's conclusion describes what this course makes you: someone who can build, debug and ship working robots, who understands the stack from the electrical layer up to the learned policy.
+Your capstone is the proof. Today you package it so others can see it in ninety seconds.
+
+## The video
+1. Five seconds: what it is, in one caption
+2. A full successful run, sped up if long
+3. One honest failure, with a caption explaining why
+4. The metric on screen: "14 / 20 successful runs"
+5. End card: repo link
+Keep the video to sixty to ninety seconds. Open with one caption saying what it is. Show a full successful run. Show one honest failure, with a caption explaining the cause. Put the metric on screen. End with the repo link.
+Including a failure feels risky, but it builds trust instantly. It shows you measured, and that you understand your system's limits.
+
+## The architecture diagram
+@svg sensethinkact | sensors → perception → planning → control → actuators
+Draw one diagram of the whole system: sensors on the left, then perception, planning, control, and actuators on the right, with the actual node names, topics or tasks on each arrow.
+This is the sense-think-act loop from Day 1 of the course, now with your own components in every box. Notice how many modules feed into it: electronics, embedded, mechanics, ROS, control, vision and learning.
+
+## The capstone README
+\`\`\`text
+capstone/README.md
+  [90-second video]
+  One line: what it does + the headline metric
+  Architecture diagram
+  How it works (short) · How to run it (3 commands)
+  Results: trials, protocol, success rate, failure breakdown
+  What broke and how I fixed it (4+ entries)
+  What I would do next
+\`\`\`
+The README follows the pattern you have practised all course: video, one line with the metric, the diagram, a short explanation, how to run it, results with the protocol, at least four what-broke entries, and next steps.
+Check the three commands actually work from a fresh clone. A reviewer who cannot run it will assume it does not work.
+
+## Done is a skill
+- Freeze the scope: no new features today
+- Tag a release: git tag capstone-v1
+- Tick the practice task
+Finishing is a skill. Freeze the scope: no new features today, only the video, the diagram and the README. Tag a release, so there is a fixed version to point to.
+Tick the practice task. You have built a complete robot system, end to end, with evidence. That is rare.
+
+## A fresh-clone check
+\`\`\`bash
+cd /tmp && git clone https://github.com/YOU/capstone && cd capstone
+# follow your README's "How to run" exactly, nothing else
+\`\`\`
+Before you call it finished, clone your repo into a fresh folder and follow your own README, exactly, step by step, adding nothing from memory. Missing dependencies, hard-coded paths and forgotten files show up immediately.
+Fix whatever breaks and update the README. A reviewer who can reproduce your result in ten minutes will trust everything else you claim.
+`,
+  key: [
+    'A 60–90 s video: what it is, a success, one honest failure, the metric.',
+    'One architecture diagram: sensors → perception → planning → control → actuators.',
+    'README: video, metric, diagram, run commands, results, what broke, next.',
+    'Freeze scope, tag a release, finish.'
+  ],
+  quiz: [
+    ['Why include an honest failure in the capstone video?', ['To fill time', 'It builds trust and shows you measured and understand the limits', 'Reviewers require it', 'It makes the video longer'], 1, 'Evidence of real engineering.'],
+    ['What should you not do on the final capstone day?', ['Record the video', 'Add new features', 'Write the README', 'Tag a release'], 1, 'Freeze the scope.']
+  ]
+});
+
+D({
+  n: 164, icon: '📚', topic: 'Portfolio & career', hours: 3, notion: '3f6cdfea8ce281a6a931fbe1f511ebc6', svg: 'git',
+  title: 'Rewrite your top 3 READMEs',
+  goal: 'Three portfolio projects that look like engineering.',
+  tasks: [
+    'Pick your 3 best projects (suggested: capstone, SO-101 ACT before/after, SLAM + Nav2 robot or the balancer)',
+    'Each README: video at the top, wiring or architecture diagram, the numbers you measured, a section titled "What broke and how I fixed it"',
+    'Pin them on your GitHub profile. Add a top-level README linking the whole 6-month journey',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (Portfolio)', 'Practice task: take your three best projects and rewrite their READMEs. Each one needs a video at the top, a wiring or architecture diagram, the actual numbers you measured, and a section titled "what broke and how I fixed it". That last section is the single highest-value thing in a self-taught portfolio, because it is the part that cannot be faked from a tutorial'],
+    ['Month 6 Milestone (this one)', 'Show three portfolio projects with video, metrics and a documented failure analysis'],
+    ['Red flags recruiters name', 'Still on end-of-life ROS 1 with no migration evidence\nClaimed projects that cannot survive three follow-up questions\nA pure deep-learning background with no kinematics or embodiment understanding\nTutorial completion certificates, which are weighted far below real contributions']
+  ],
+  links: [['GitHub: pinning repositories to your profile', 'https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/customizing-your-profile/pinning-items-to-your-profile']],
+  video: `
+## Your top three
+| Suggested project | Why it is strong |
+|---|---|
+| capstone | integration, your chosen direction, reliability data |
+| SO-101 ACT before/after | your own dataset, a measured improvement |
+| SLAM + Nav2 robot, or the balancer | autonomy, or control on real hardware |
+Today's practice task: pick your three best projects and rewrite their READMEs. Suggested: the capstone, the SO-101 ACT before-and-after, and either the SLAM and Nav2 robot or the self-balancing robot.
+Pick the three that best support your chosen direction. A reviewer will look at three projects at most, so choose deliberately.
+
+## The four required parts
+1. A video at the top
+2. A wiring or architecture diagram
+3. The actual numbers you measured
+4. A section titled "What broke and how I fixed it"
+Each README needs four things: a video at the top, a wiring or architecture diagram, the actual numbers you measured, and a section titled exactly "What broke and how I fixed it".
+The article calls that last section the single highest-value thing in a self-taught portfolio, because it is the part that cannot be faked from a tutorial.
+
+## Avoid the red flags
+- Stuck on end-of-life ROS 1 with no migration evidence → you are on ROS 2 Jazzy
+- Projects that cannot survive three follow-up questions → Day 27 drills this
+- Deep learning with no kinematics or embodiment → you built and measured real arms
+- Tutorial certificates → weighted far below real contributions
+The article lists the red flags recruiters name. End-of-life ROS 1 with no migration evidence: you are on ROS 2 Jazzy. Projects that cannot survive three follow-up questions: Day 27 tests that.
+A pure deep-learning background with no kinematics or embodiment: you computed FK by hand and built an arm. Tutorial certificates: weighted far below real work. Make sure your READMEs show the opposite of each.
+
+## Pin them and write a profile README
+\`\`\`text
+github.com/YOU (profile README)
+  One line: who you are + your chosen direction
+  Pinned: capstone · so101-act · slam-nav (or balancer)
+  "Robotics in 6 months" — one line per month, linking each month's index
+  Contact
+\`\`\`
+Pin the three repos on your GitHub profile, so they are the first thing anyone sees. Then write a profile README: one line on who you are and your direction, the three projects, and a short list linking the whole six-month journey, month by month.
+That journey list shows breadth; the three pinned projects show depth.
+
+## The ten-second test
+- Open each README as a stranger would
+- In 10 seconds, can you tell what it does and how well?
+- If not: move the video and headline number higher
+Finish with the ten-second test. Open each README as a stranger. Within ten seconds, can you tell what it does and how well it works? If not, move the video and the headline number higher, and cut words.
+Tick the practice task: that is a Module 6 milestone, three portfolio projects with video, metrics and a documented failure analysis.
+`,
+  key: [
+    'Pick 3 projects that support your direction.',
+    'Each README: video, diagram, measured numbers, "What broke and how I fixed it".',
+    'Avoid recruiter red flags: ROS 1, shallow projects, no embodiment, certificates only.',
+    'Pin the repos and write a profile README linking the 6-month journey.'
+  ],
+  quiz: [
+    ['Which README section does the article call the highest-value part of a self-taught portfolio?', ['Installation', '"What broke and how I fixed it"', 'Licence', 'Acknowledgements'], 1, 'It cannot be faked from a tutorial.'],
+    ['Which is a red flag recruiters name?', ['ROS 2 Jazzy projects', 'Tutorial completion certificates in place of real work', 'Measured success rates', 'Videos in READMEs'], 1, 'Real contributions weigh far more.']
+  ]
+});
+
+D({
+  n: 165, icon: '🤝', topic: 'Portfolio & career', hours: 3, notion: '3f6cdfea8ce281029aa2d49478f4e392', svg: 'git',
+  title: 'Open-source contribution + share your work',
+  goal: 'One contribution to a package employers depend on, and one public post.',
+  tasks: [
+    'Browse issues ("good first issue", docs, examples) in LeRobot, Nav2 or MoveIt 2',
+    'Open one PR: a doc fix, an example, a small bug fix, or upload your dataset to the LeRobot Hub with a good card',
+    'Write a LinkedIn/X post about one project, focused on what broke and how you fixed it',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['High signal (portfolio)', 'Public datasets on the LeRobot Hub, where there are already tens of thousands of community datasets\nContributions to the packages employers depend on: ROS 2 core, Nav2, MoveIt, Isaac Lab, LeRobot'],
+    ['Start before you feel ready', 'Start before you feel ready. Apply for the technician role, take the teleoperation shift, contribute the small fix to Nav2, message the founder of the three-person robotics startup. The gap between "I am learning robotics" and "I work in robotics" is almost entirely a gap of nerve, and nobody in this field will ever tell you that you have studied enough']
+  ],
+  links: [
+    ['LeRobot issues', 'https://github.com/huggingface/lerobot/issues'],
+    ['Nav2 issues', 'https://github.com/ros-navigation/navigation2/issues']
+  ],
+  video: `
+## Contribute where employers look
+@big Contributions to the packages employers depend on
+The article lists contributions to the packages employers depend on as high signal: ROS 2 core, Nav2, MoveIt, Isaac Lab, LeRobot. Engineers at robotics companies use these daily; a merged contribution puts your name where they will see it.
+Today's goal: one pull request, and one public post about your work.
+
+## Find a first contribution
+- Filter issues by "good first issue", "documentation", "help wanted"
+- Docs fixes: a wrong command, an outdated flag, a missing step you hit
+- Examples: a small script you wish had existed
+- Or: your dataset on the LeRobot Hub with a clear dataset card
+Browse the issues in LeRobot, Nav2 or MoveIt 2, filtering by good first issue or documentation. The best first contributions often come from your own pain: a command in the docs that was wrong, a flag that changed, a step you had to figure out.
+A public dataset counts too. The LeRobot Hub already has tens of thousands of community datasets; yours, with a clear card describing the task, cameras and protocol, adds real value.
+
+## Make the PR easy to accept
+1. Read CONTRIBUTING.md and follow it exactly
+2. One small, focused change
+3. A clear title and description: what, why, how you tested
+4. Be patient and polite with review feedback
+Make your pull request easy to accept. Read the contributing guide and follow it. Keep the change small and focused. Write a clear description: what you changed, why, and how you tested it.
+Maintainers are busy. Respond to review comments politely and quickly. A small merged fix is worth far more than a large ignored one.
+
+## Share your work
+\`\`\`text
+Post outline (LinkedIn / X):
+  Hook: "My robot arm picked the cube 10/20 times. Then I fixed the data."
+  2–3 lines: what failed and how you diagnosed it
+  The result: 10/20 → 16/20
+  Video or GIF
+  Link to the repo
+\`\`\`
+Then write one public post about a project, focused on what broke and how you fixed it, not on how impressive it is. Open with a hook, explain the failure and diagnosis in two or three lines, give the result, attach the video, and link the repo.
+Stories about failure and diagnosis get far more engagement from engineers than polished demos.
+
+## Start before you feel ready
+@big The gap is almost entirely a gap of nerve
+The article's most important advice for this stage: start before you feel ready. Apply for the technician role. Take the teleoperation shift. Contribute the small fix to Nav2. Message the founder of the three-person robotics startup.
+The gap between "I am learning robotics" and "I work in robotics" is almost entirely a gap of nerve, and nobody will ever tell you that you have studied enough. Log your PR and post links today.
+`,
+  key: [
+    'Contribute to packages employers depend on: LeRobot, Nav2, MoveIt, ROS 2.',
+    'Good first PRs: docs fixes from your own pain, small examples, a public dataset.',
+    'Keep PRs small and focused; follow CONTRIBUTING; describe testing.',
+    'Post about what broke and how you fixed it; start before you feel ready.'
+  ],
+  quiz: [
+    ['What is often the best first open-source contribution?', ['A huge refactor', 'A small docs fix for a problem you hit yourself', 'A new framework', 'Changing the licence'], 1, 'Small, real, easy to merge.'],
+    ['According to the article, what mostly separates learning robotics from working in it?', ['A PhD', 'Nerve: applying and contributing before you feel ready', 'A bigger GPU', 'More certificates'], 1, 'Nobody will tell you that you have studied enough.']
+  ]
+});
+
+D({
+  n: 166, icon: '🎤', topic: 'Portfolio & career', hours: 3, notion: '3f6cdfea8ce281bea106dd0b65048862', svg: 'pid',
+  title: 'Interview prep: robotics-style questions',
+  goal: 'Answer the classic robotics interview topics using your own projects as examples.',
+  tasks: [
+    'For each topic write a 2-minute answer that uses your own project: IK, PID/feedback, sensor fusion/Kalman, SLAM, path planning (read up on RRT), C++ vs Python trade-offs',
+    'Read 15 real questions on Glassdoor. Answer 5 out loud',
+    'Practise one simulation-debugging drill: break a controller gain in your MuJoCo or Gazebo setup and diagnose it in 15 minutes',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['5. Interviews', 'Robotics interviews are not software interviews, and leetcode is a much weaker predictor here\nExpect: inverse kinematics questions, PID and feedback loops, sensor fusion and Kalman filters, SLAM concepts, path planning including RRT, and C++ versus Python trade-offs\nExpect also, at good companies: a simulation-based debugging exercise where they hand you a MuJoCo or Isaac scene with a deliberately broken controller, a ROS 2 architecture problem scoped to the real job, and a long conversation about a specific past failure and how you diagnosed it']],
+  links: [['Glassdoor robotics engineer interview questions', 'https://www.glassdoor.com/Interview/robotics-engineer-interview-questions-SRCH_KO0,17.htm']],
+  video: `
+## Not a software interview
+@big Leetcode is a much weaker predictor here
+The article is clear: robotics interviews are not software interviews, and leetcode is a much weaker predictor. They test whether you understand physical systems and can debug them.
+Today you prepare answers for the classic topics, using your own projects as the examples. That is the key: every answer should end with "and here is where I did it".
+
+## The classic topics
+| Topic | Your project example |
+|---|---|
+| inverse kinematics | SO-101 damped least-squares solver + singularity |
+| PID and feedback | balancer: P vs PD vs PID+FF plot |
+| sensor fusion, Kalman | Module 2 complementary/Kalman filter on the IMU |
+| SLAM | SLAM Toolbox map; odometry drift; map → odom |
+| path planning, RRT | Nav2 planner; MoveIt's RRTConnect |
+| C++ vs Python | Module 4 nodes in both; where you'd use each |
+The article lists what to expect: inverse kinematics, PID and feedback loops, sensor fusion and Kalman filters, SLAM concepts, path planning including RRT, and C++ versus Python trade-offs.
+You have a project for every one. Write a two-minute answer for each, with the concept first and your project as evidence.
+
+## RRT in one minute
+@eq sample a random point → find the nearest tree node → step toward it → if collision-free, add it | repeat until the goal is reached
+Path planning with RRT comes up often, so be ready. A rapidly-exploring random tree grows from the start: sample a random point, find the nearest node in the tree, take a short step toward the sample, and add the new node if the step is collision-free.
+Repeat until the tree reaches the goal. It explores large spaces quickly, which is why MoveIt uses variants like RRT Connect, growing trees from both ends. You used it on Day 22 of Module 5.
+
+## The simulation debugging exercise
+- They hand you a MuJoCo or Isaac scene with a deliberately broken controller
+- Practise: break a gain in your own setup; diagnose in 15 minutes
+- Method: observe → hypothesise → measure (plot!) → change one thing → verify
+At good companies, expect a simulation debugging exercise: a scene with a deliberately broken controller. Practise today: have a friend, or yourself with your eyes closed, change one gain in your MuJoCo or Gazebo setup, then diagnose it within fifteen minutes.
+Use a method, out loud: observe the behaviour, form a hypothesis, measure by plotting, change one thing, and verify. Interviewers grade the method as much as the answer.
+
+## The other two formats
+- A ROS 2 architecture problem scoped to the real job: nodes, topics, actions, frames
+- A long conversation about a specific past failure and how you diagnosed it
+Expect two more formats. A ROS 2 architecture problem, scoped to the company's real work: which nodes, which topics, services or actions, which frames. Your Module 4 design exercises prepared you.
+And a long conversation about one past failure and how you diagnosed it. Your what-broke sections are your script. Read fifteen real Glassdoor questions and answer five out loud today.
+`,
+  key: [
+    'Robotics interviews test physical systems and debugging, not leetcode.',
+    'Prepare 2-minute answers: IK, PID, Kalman, SLAM, RRT, C++ vs Python — each with your project.',
+    'RRT: sample, nearest node, step, add if collision-free, repeat.',
+    'Practise a 15-minute sim debugging drill with an out-loud method.'
+  ],
+  quiz: [
+    ['What is the best structure for a robotics interview answer?', ['Recite a textbook definition', 'Explain the concept, then show where you did it in your own project', 'Talk about leetcode', 'List tools'], 1, 'Concept + evidence.'],
+    ['In RRT, what happens after sampling a random point?', ['The goal moves', 'Find the nearest tree node and step toward the sample', 'The tree is deleted', 'PID tuning starts'], 1, 'Then add the node if collision-free.']
+  ]
+});
+
+D({
+  n: 167, icon: '🕵️', topic: 'Milestone', hours: 2.5, notion: '3f6cdfea8ce281e192cbe5d71db6f598', svg: 'git',
+  title: '20-minute repo interrogation + milestone test',
+  goal: 'Survive three levels of follow-up questions on your own code.',
+  tasks: [
+    'Have someone (a friend, or Claude acting as an interviewer) grill you for 20 minutes on one repo: why that gain, why that sensor, what if the battery sags, what did you try first',
+    'Note every question you could not answer three levels deep. Fix the gap or the README',
+    'Go through each Month 6 milestone item',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (Interviews)', 'Practice task: have someone interrogate you about your own repo for twenty minutes. Not the concepts, your specific code. Why that gain, why that sensor, what happens if the battery sags, what did you try before this worked. If you cannot answer three levels deep, the project is not ready to be on your CV'],
+    ['Month 6 Milestone', 'By the end of this month you should be able to:\nRecord a demonstration dataset and train a policy that runs on your own hardware\nExplain the difference between behaviour cloning, ACT and diffusion policy\nName which VLA models have open weights and which do not\nState which of the three directions you are pursuing, and why\nShow three portfolio projects with video, metrics and a documented failure analysis\nAnswer three levels of follow-up questions about any line of your own code']
+  ],
+  links: [['Glassdoor robotics engineer interview questions', 'https://www.glassdoor.com/Interview/robotics-engineer-interview-questions-SRCH_KO0,17.htm']],
+  video: `
+## The interrogation
+@big If you cannot answer three levels deep, it is not ready for your CV
+The final practice task: have someone interrogate you about your own repo for twenty minutes. Not the concepts: your specific code. Why that gain, why that sensor, what happens if the battery sags, what did you try before this worked.
+The article's rule: if you cannot answer three levels deep, the project is not ready to be on your CV.
+
+## Three levels deep
+| Level | Example |
+|---|---|
+| 1 · what | "Why is Kd 0.8?" → "It reduced overshoot from 38% to 12%." |
+| 2 · why | "Why not higher?" → "Above 1.2 the motors buzzed from IMU noise." |
+| 3 · how do you know | "How did you know it was noise?" → "I plotted the D term; spikes matched the raw gyro." |
+Here is what three levels looks like. Level one: what you did, with a number. Level two: why not something else, with the trade-off. Level three: how you know, with the measurement that proved it.
+Most people stop at level one. Your daily logs and what-broke sections are what get you to level three.
+
+## Who interrogates you
+- A friend with any technical background, given a list of prompts
+- Or Claude acting as an interviewer: paste your README and code, ask for 20 minutes of follow-ups
+- Record it; listen back
+Find an interrogator: a friend with a list of prompts, or Claude acting as an interviewer, given your README and key code files and asked for twenty minutes of escalating follow-up questions.
+Record the session and listen back. You will hear where you hesitated, guessed or rambled.
+
+## Fix the gaps
+- Every unanswered question → a gap to fix
+- Missing knowledge → study it, then answer it in writing
+- Missing evidence → run the measurement, add it to the README
+Write down every question you could not answer three levels deep. For each, decide: is the gap knowledge, so study it and write the answer, or evidence, so run the measurement and add it to the README?
+Then go again on a different repo if you have time. This is the single best interview preparation there is.
+
+## The Module 6 milestone
+1. A demonstration dataset and a policy on your own hardware
+2. BC vs ACT vs Diffusion Policy
+3. Which VLAs have open weights
+4. Your direction, and why
+5. Three portfolio projects with video, metrics and failure analysis
+6. Three levels of follow-ups on any line of your code
+Finally, go through each Module 6 milestone item: the dataset and policy on your arm; the three policy types; which VLAs have open weights; your direction and why; three portfolio projects; and three levels of follow-ups, which you just tested.
+Tick the practice task and each milestone. Tomorrow is the final retro.
+`,
+  key: [
+    'Get interrogated for 20 minutes on your own code, not concepts.',
+    'Three levels: what (a number) → why (a trade-off) → how you know (a measurement).',
+    'Turn every unanswered question into a knowledge or evidence fix.',
+    'Check every Module 6 milestone item.'
+  ],
+  quiz: [
+    ['What does a "level three" answer contain?', ['A definition', 'The measurement or evidence that proves your claim', 'A guess', 'A tool name'], 1, 'How you know.'],
+    ['You could not explain why you chose a sensor. What do you do?', ['Remove the repo', 'Fix the gap: study or measure, then document the answer', 'Ignore it', 'Change the sensor'], 1, 'Fix knowledge or evidence.']
+  ]
+});
+
+D({
+  n: 168, icon: '🏆', topic: 'Review', hours: 1.5, notion: '3f6cdfea8ce2817cba6cc274e10feb13', svg: 'robot',
+  title: 'Final retro: 6 months done',
+  goal: 'Close the course and decide what comes next.',
+  tasks: [
+    'Open the Month 6 page: tick milestones, tick Milestone met, fill the Retro',
+    'Look at the dashboard: total hours, months completed, skipped days',
+    'Write a one-page summary: what you can build now, your best 3 projects, your chosen direction, the next 3 months plan',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Closing', 'Six months of two focused hours a day is enough to change what you are able to do with your hands and your head\nThe hardware is cheaper than it has ever been, the software is open, the courses are free, and the people who can actually make machines work are genuinely scarce\nGo build something that moves']],
+  links: [['LeRobot', 'https://github.com/huggingface/lerobot']],
+  video: `
+## Six months, one table
+| Module | You can now |
+|---|---|
+| 1 · Electronics & foundations | read circuits, measure, solder, Python and Git |
+| 2 · Embedded & motors | microcontrollers, drivers, encoders, sensors, a balancer |
+| 3 · Mechanical & the arm | CAD, 3D printing, build and calibrate the SO-101 |
+| 4 · ROS 2 & autonomy | nodes, URDF/TF, Gazebo, ros2_control, SLAM, Nav2 |
+| 5 · Control, kinematics, vision | PID to LQR, FK/IK, calibration, MoveIt |
+| 6 · Learning & career | LeRobot, ACT, VLAs, RL, a capstone, a portfolio |
+The final day. Six months ago you were learning Ohm's law. Today you can build, program, simulate, control, perceive with, and teach a robot, and you have the portfolio to prove it.
+Read the table slowly. Every row is something most people never learn.
+
+## The final retro
+- Open the Month 6 page: tick the milestones and "Milestone met"
+- Dashboard: total hours, modules completed, skipped days
+- Be honest about what is still shaky — it is your next plan
+Open the Month 6 page, tick the milestones, and fill in the retro. Then look at the dashboard: your total hours, completed modules, and any skipped days.
+Be honest about what still feels shaky. That list is not a failure; it is the start of your next plan.
+
+## The one-page summary
+\`\`\`text
+1. What I can build now (5 bullets)
+2. My best 3 projects (links, one line + one number each)
+3. My direction, and why (3 lines)
+4. Next 3 months: one deep project, one contribution, applications per week
+\`\`\`
+Write one page with four parts. What you can build now. Your best three projects, each with a link, a line and a number. Your chosen direction and why. And a plan for the next three months: one deeper project, ongoing open-source contributions, and a weekly target for applications.
+This page is also the core of your CV and your cover letters.
+
+## The article's closing
+@big Go build something that moves
+The article closes with this. Six months of two focused hours a day is enough to change what you are able to do with your hands and your head. The hardware is cheaper than it has ever been, the software is open, the courses are free, and the people who can actually make machines work are genuinely scarce.
+Go build something that moves.
+
+## Thank you
+- Keep the logs: they are your interview stories
+- Keep the habit: two focused hours, most days
+- Keep shipping: one measured project at a time
+Congratulations on finishing Robotics in Six Months. Keep your logs: they are your interview stories. Keep the habit of focused daily work. And keep shipping, one measured project at a time.
+Start before you feel ready. Good luck.
+`,
+  key: [
+    'Six modules: electronics → embedded → mechanical → ROS 2 → control/vision → learning/career.',
+    'Final retro: milestones, hours, honest gaps.',
+    'One-page summary: skills, best 3 projects, direction, next 3 months.',
+    'Go build something that moves.'
+  ],
+  quiz: [
+    ['What should the "next 3 months" plan include?', ['Nothing — the course is done', 'A deeper project, contributions and a weekly application target', 'Only rest', 'Repeating Module 1'], 1, 'Keep building and applying.'],
+    ['How does the article close?', ['"Study more theory"', '"Go build something that moves"', '"Buy a bigger GPU"', '"Wait until you feel ready"'], 1, 'Start before you feel ready.']
+  ]
+});
 // @@END

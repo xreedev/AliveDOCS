@@ -1583,4 +1583,517 @@ Next section is SLAM and Nav2: building a map of your world with the lidar, then
     ['Which is NOT on the pre-SLAM readiness list?', ['/scan at about 10 Hz', 'Controllers active', 'A trained RL policy', 'use_sim_time everywhere'], 2, 'RL is Module 6.']
   ]
 });
+
+/* ───────────── Section 4 · SLAM and Nav2 ───────────── */
+
+D({
+  n: 106, icon: '🧭', topic: 'SLAM & Nav2', hours: 2.5, notion: '3f6cdfea8ce281849d26f9565135cbaa', svg: 'costmap',
+  title: 'Nav2 quick start · ORDER Month 5 gear',
+  goal: 'See Nav2 working on the demo robot, and order Month 5 gear.',
+  order: 'Order Module 5 gear today. On the Gear tab, Module 5: a USB webcam (Must), a printed chessboard, coloured test objects, and the Python libraries. Optional: a depth camera. Set each item\'s Status.',
+  tasks: [
+    'Order Month 5 gear (see the order note)',
+    'Install Nav2 and SLAM Toolbox for Jazzy',
+    'Run the Nav2 Getting Started simulation demo (dev container or local). Send a goal from RViz',
+    'Read the focus list below. Skim the Nav2 tutorials index to see what exists',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Nav2 Getting Started', 'Launches Nav2 in simulation in under five minutes, with a pre-configured VS Code dev container that removes all install pain'],
+    ['What to focus on', 'The difference between mapping and localizing, and when to switch SLAM Toolbox into localization mode\nOdometry quality, because SLAM Toolbox needs it and a smeared map is almost always an odometry problem rather than an algorithm problem\nCostmap tuning: inflation radius, obstacle layers, and the local versus global split\nBehaviour trees, which is how Nav2 orchestrates everything and the part beginners fail to grasp']
+  ],
+  links: [
+    ['Nav2 Getting Started', 'https://docs.nav2.org/rolling/getting_started/index.html'],
+    ['Nav2 Tutorials', 'https://docs.nav2.org/rolling/tutorials/']
+  ],
+  video: `
+## The final section of Module 4
+@svg slam | map the world, then navigate it
+Welcome to the last section of Module 4: SLAM and navigation. This is what most people picture when they think of a mobile robot: it explores, builds a map, then drives itself to any point you click, avoiding obstacles on the way.
+Two packages do the heavy lifting. SLAM Toolbox builds and maintains the map. Nav2 plans paths and drives. Today you see Nav2 working on a demo robot, before putting it on your own tomorrow.
+
+## Order Module 5 gear
+- USB webcam, any 720p or 1080p (Must have; two if you can)
+- A printed chessboard on a flat, rigid board
+- Coloured test objects and a small bin
+- Python: numpy, scipy, python-control, OpenCV, Open3D · optional depth camera
+First, the order. Module 5 is control and perception, and the hardware is cheap: a USB webcam, a printed chessboard for calibration, and some coloured cubes or balls with a small bin. The rest is free software.
+A depth camera is optional; sample point clouds are enough. The webcams and objects come back in Module 6 for the robot learning demos, so buy two webcams if you can. Set each item's status on the Gear tab.
+
+## Install and run the demo
+\`\`\`bash
+sudo apt install ros-jazzy-navigation2 ros-jazzy-nav2-bringup \\
+                 ros-jazzy-slam-toolbox
+ros2 launch nav2_bringup tb4_simulation_launch.py headless:=False
+\`\`\`
+Install Nav2, its bringup package, and SLAM Toolbox. The Getting Started guide launches a full simulation in minutes; the article notes it even provides a VS Code dev container that removes all install pain, if your local setup fights you.
+In RViz, click 2D Pose Estimate to tell the robot where it starts, then Nav2 Goal and click somewhere on the map. Watch the planned path appear, and the robot drive it.
+
+## What Nav2 is made of
+| Piece | Job |
+|---|---|
+| map server / SLAM | the map |
+| AMCL or SLAM localization | where am I on the map? |
+| planner server | global path, start to goal |
+| controller server | follow the path, avoid what is near |
+| costmaps (global, local) | where it is safe to drive |
+| behaviour tree navigator | orchestrates all of the above, plus recoveries |
+Nav2 is not one program but a set of servers. A map, from a file or from SLAM. Localization, to know where the robot is on that map. A planner, which finds a path from start to goal. A controller, which follows that path while dodging nearby obstacles.
+Costmaps describe where it is safe to drive. And a behaviour tree orchestrates everything, including recovery behaviours when the robot gets stuck.
+
+## The four things to focus on
+1. Mapping versus localizing, and when to switch SLAM Toolbox mode
+2. Odometry quality: a smeared map is almost always odometry, not the algorithm
+3. Costmap tuning: inflation radius, obstacle layers, local versus global
+4. Behaviour trees: how Nav2 orchestrates everything
+The article gives you a precise focus list. First, the difference between mapping and localizing. Second, odometry quality: a smeared map is almost always an odometry problem, not an algorithm problem.
+Third, costmap tuning: inflation radius, obstacle layers, and the local versus global split. And fourth, behaviour trees, which the article says is the part beginners fail to grasp. One per day this week.
+`,
+  key: [
+    'SLAM Toolbox builds the map; Nav2 plans and drives.',
+    'Nav2 = map, localization, planner, controller, costmaps and a behaviour tree.',
+    'Focus: mapping vs localizing, odometry quality, costmaps, behaviour trees.',
+    'Order Module 5 gear today: webcam, chessboard, test objects.'
+  ],
+  quiz: [
+    ['In Nav2, which component follows the path and avoids nearby obstacles?', ['Planner server', 'Controller server', 'Map server', 'AMCL'], 1, 'The planner makes the global path; the controller follows it.'],
+    ['According to the article, a smeared SLAM map is usually caused by…', ['A bad SLAM algorithm', 'Poor odometry', 'The camera', 'Too many goals'], 1, 'Check odometry and TF first.']
+  ]
+});
+
+D({
+  n: 107, icon: '🗺️', topic: 'SLAM & Nav2', hours: 3, notion: '3f6cdfea8ce28190a3dcee0182b8ff03', svg: 'slam',
+  title: 'SLAM Toolbox: map your world',
+  goal: 'Your own robot builds a clean map of your own world.',
+  tasks: [
+    'Launch your robot in your world + SLAM Toolbox (online async mode)',
+    'Teleop slowly around the whole world. Watch the map grow in RViz',
+    'If the map smears: check TF (odom → base_link → lidar_link) and odometry first',
+    'Save the map (map_saver / SLAM Toolbox serialize)',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['SLAM Toolbox', 'The currently supported ROS 2 SLAM library, with synchronous, asynchronous, lifelong and localization-only modes, and multi-robot support'],
+    ['Practice task (SLAM)', 'Practice task: run SLAM Toolbox in your Gazebo world, teleop around it, save the map, then switch to localization mode and send Nav2 goals from RViz']
+  ],
+  links: [
+    ['SLAM Toolbox', 'https://github.com/SteveMacenski/slam_toolbox'],
+    ['Nav2 Tutorials (SLAM)', 'https://docs.nav2.org/rolling/tutorials/']
+  ],
+  video: `
+## What SLAM solves
+@svg slam | Simultaneous Localization And Mapping
+SLAM stands for simultaneous localization and mapping. It is a chicken and egg problem: to build a map you need to know where you are, and to know where you are you need a map. SLAM solves both at once.
+Your robot starts with odometry, which drifts, as you measured last section. SLAM matches each new lidar scan against the map built so far, and corrects the robot's position, so the map stays sharp.
+
+## The map → odom → base_link chain
+@eq map → odom → base_link → lidar_link | SLAM publishes map → odom
+Here is how SLAM fits into TF. Your diff drive controller already publishes odom to base link: smooth, but drifting. SLAM publishes one more transform, map to odom, which is the correction.
+Chained together, map to base link is the robot's best estimate of its true position. Odometry gives smoothness over short times; SLAM removes the drift over long times. This split is the same in every ROS robot.
+
+## Launch SLAM Toolbox
+\`\`\`bash
+ros2 launch my_robot sim.launch.py            # robot + world + controllers + bridge
+ros2 launch slam_toolbox online_async_launch.py use_sim_time:=true
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args \\
+  -p stamped:=true -r cmd_vel:=/diff_drive_controller/cmd_vel
+\`\`\`
+Launch your simulation, then SLAM Toolbox in online asynchronous mode, which processes scans as fast as it can and skips some if it falls behind. Use sim time.
+In RViz, set the fixed frame to map and add a Map display on the map topic. Then teleop slowly around the whole world, and watch the grey map grow as the lidar sees new walls.
+
+## Driving for a good map
+- Slow and steady: fast turns blur the scan matching
+- Revisit the start: closing the loop corrects accumulated drift
+- Cover every room and corridor; leave no unexplored edges
+- Black = obstacle · white = free · grey = unknown
+How you drive matters. Go slowly, especially when turning: fast rotations are hardest for scan matching. Revisit the starting point at the end; recognising a place it has seen before, called closing the loop, lets SLAM correct drift across the whole map.
+In the map, black cells are obstacles, white is free space, and grey is unknown. A good map has crisp, single-line walls.
+
+## When the map smears
+| Symptom | Check first |
+|---|---|
+| doubled or ghost walls | odometry: wheel radius/separation |
+| map rotates when the robot turns | lidar frame or TF to lidar_link |
+| "message filter dropping" warnings | TF timing, use_sim_time |
+| nothing appears | /scan frame and topic in SLAM params |
+The article is emphatic: a smeared map is almost always odometry, not the algorithm. Doubled walls mean the robot thinks it moved differently from reality, so check wheel radius and separation.
+A map that rotates when you turn usually means the lidar's TF is wrong. Dropping messages warnings are timing, almost always sim time. Do not tune SLAM parameters until these are clean.
+
+## Save the map
+\`\`\`bash
+ros2 run nav2_map_server map_saver_cli -f ~/maps/my_world
+#  → my_world.pgm (image) + my_world.yaml (resolution, origin)
+ros2 service call /slam_toolbox/serialize_map \\
+  slam_toolbox/srv/SerializePoseGraph "{filename: '/home/me/maps/my_world'}"
+\`\`\`
+Save the map two ways. The map saver writes an image plus a YAML with the resolution and origin; that is what Nav2's map server loads. SLAM Toolbox's serialize service saves its full pose graph, which it needs for localization mode tomorrow.
+Open the image file and look at it. Put it in your log with notes on its quality.
+`,
+  key: [
+    'SLAM builds a map and localizes at once by matching scans to the map.',
+    'SLAM publishes map → odom; odometry publishes odom → base_link.',
+    'Drive slowly and close the loop for a clean map.',
+    'Smeared map → check odometry and TF before touching SLAM parameters.'
+  ],
+  quiz: [
+    ['Which transform does SLAM Toolbox publish?', ['odom → base_link', 'map → odom', 'base_link → lidar_link', 'world → map'], 1, 'It corrects odometry drift with map → odom.'],
+    ['Your map shows doubled walls. What do you check first?', ['SLAM resolution', 'Odometry (wheel radius / separation)', 'Camera calibration', 'Behaviour tree'], 1, 'Smeared maps are almost always odometry.']
+  ]
+});
+
+D({
+  n: 108, icon: '📍', topic: 'SLAM & Nav2', hours: 3, notion: '3f6cdfea8ce28165b563d7b7081d2e51', svg: 'costmap',
+  title: 'Localization mode + Nav2 goals',
+  goal: 'Your robot navigates autonomously on the map it built.',
+  tasks: [
+    'Switch SLAM Toolbox to localization mode with your saved map (or use AMCL + map_server)',
+    "Launch Nav2 with your robot's params (footprint/radius, speeds, frames)",
+    'Set the initial pose in RViz. Send 5 Nav2 goals across the world',
+    'Record which goals succeed and which fail',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Month 4 Milestone (this one)', 'Build a map with SLAM Toolbox and navigate autonomously with Nav2']],
+  links: [
+    ['Nav2 Getting Started', 'https://docs.nav2.org/rolling/getting_started/index.html'],
+    ['Articulated Robotics (SLAM + navigate end to end)', 'https://articulatedrobotics.xyz/tutorials/']
+  ],
+  video: `
+## Mapping versus localizing
+| Mode | Map | Use when |
+|---|---|---|
+| mapping | grows and changes | exploring a new place |
+| localization | fixed, loaded from disk | working in a known place |
+The first item on the article's focus list: mapping versus localizing. In mapping mode the map grows and changes as you drive. In localization mode the map is fixed, and the robot only works out where it is on it.
+Once a place is mapped, switch to localization. It is cheaper, and the map does not get corrupted by people walking past or furniture being moved.
+
+## Two ways to localize
+- SLAM Toolbox, mode: localization, map_file_name: your serialized map
+- or: nav2 map_server (the .yaml/.pgm) + AMCL (particle filter)
+- Either way, the output is the same: map → odom
+You have two options. SLAM Toolbox in localization mode, loading the pose graph you serialized yesterday. Or the classic Nav2 approach: the map server loads the image and YAML, and AMCL localizes on it.
+AMCL is a particle filter: hundreds of guesses of the robot's pose, weighted by how well the scan matches the map from each one. Either way, the output is the same map to odom transform. Try SLAM Toolbox first.
+
+## Nav2 parameters for your robot
+\`\`\`yaml
+controller_server:
+  ros__parameters:
+    FollowPath:
+      max_vel_x: 0.22
+      max_vel_theta: 1.0
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      robot_radius: 0.12          # or a footprint polygon
+      global_frame: odom
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      robot_radius: 0.12
+      global_frame: map
+\`\`\`
+Copy Nav2's default params file into your package, then change what describes your robot: speeds it can safely reach, and its size, as a radius or footprint polygon, set in both costmaps. Check the frames: base link, odom and map.
+Wrong size is a classic problem. Too small, and the robot drives into walls; too large, and it refuses to fit through doorways it could easily pass.
+
+## Initial pose, then goals
+- RViz: 2D Pose Estimate → click where the robot is, drag its heading
+- Watch the scan snap onto the map walls
+- Nav2 Goal → click a destination; path appears; robot drives
+- Five goals across the world; note success or failure for each
+Launch Nav2 with your params. In RViz, use 2D Pose Estimate to click where the robot is and drag its heading. The laser scan should snap onto the map walls; if it does not, set the pose again more carefully.
+Then send Nav2 goals. A green path appears, and the robot follows it. Send five goals across the world, including one through a narrow gap, and record which succeed.
+
+## When a goal fails
+| Symptom | Likely cause |
+|---|---|
+| "no valid path" | goal in an obstacle or inflation zone; robot too big |
+| robot spins and gives up | localization lost, or controller limits too low |
+| robot stops near walls | inflation too large — tomorrow's tuning |
+| goal reached but offset | initial pose wrong |
+Failures teach the most. No valid path usually means the goal is inside an obstacle or its inflated zone, or the robot is configured too large. Spinning and giving up means it lost localization, or its controller limits are too low.
+Stopping near walls is inflation, which you tune tomorrow. Note every failure in the log with your best guess at the cause.
+`,
+  key: [
+    'Map once, then localize on the fixed map.',
+    'SLAM Toolbox localization mode or map_server + AMCL; both publish map → odom.',
+    'Set robot size, speeds and frames in your own Nav2 params file.',
+    'Always set the initial pose, then send goals and log failures.'
+  ],
+  quiz: [
+    ['What does AMCL do?', ['Builds a new map', 'Localizes the robot on a known map using a particle filter', 'Plans paths', 'Controls the wheels'], 1, 'Adaptive Monte Carlo Localization.'],
+    ['Nav2 refuses to go through a doorway the robot easily fits. Likely cause?', ['robot_radius set too large', 'Map resolution too fine', 'Odom frame missing', 'Teleop running'], 0, 'Too-big robot or inflation closes gaps.']
+  ]
+});
+
+D({
+  n: 109, icon: '🎚️', topic: 'SLAM & Nav2', hours: 3, notion: '3f6cdfea8ce281f7a5aee46107de0287', svg: 'costmap',
+  title: 'Costmap tuning + behaviour trees',
+  goal: 'Stop the robot clipping corners, and understand how Nav2 decides what to do next.',
+  tasks: [
+    'Read the Nav2 tuning guide (inflation radius, cost scaling, obstacle layer, local vs global costmap)',
+    'Tune until it stops clipping corners. Change one parameter at a time and note the effect',
+    'Read the Nav2 behaviour trees overview. Open the default navigate BT XML and trace what happens when a path fails',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Practice task (SLAM)', 'Tune the costmaps until it stops clipping corners. Then screen-record it. A video of a robot autonomously navigating a map it built itself is the most compelling artifact a self-taught roboticist can produce']],
+  links: [
+    ['Nav2 Tutorials', 'https://docs.nav2.org/rolling/tutorials/'],
+    ['Nav2 tuning guide', 'https://docs.nav2.org/tuning/index.html', 'extra'],
+    ['Nav2 behavior trees', 'https://docs.nav2.org/behavior_trees/index.html', 'extra']
+  ],
+  video: `
+## What a costmap is
+@svg costmap | lethal · inscribed · inflated · free
+A costmap is a grid where each cell holds a cost from zero to 254. Obstacles are lethal. Around them, Nav2 inflates the cost: very high close to the obstacle, falling away with distance.
+Planners prefer cheap cells, so inflation is what keeps the robot a comfortable distance from walls. It is also the main reason it clips corners, when inflation is too thin, or refuses doors, when it is too thick.
+
+## Global versus local
+| | Global costmap | Local costmap |
+|---|---|---|
+| frame | map | odom |
+| size | whole map | a few metres, rolling window |
+| layers | static map + obstacles + inflation | obstacles + inflation |
+| used by | planner | controller |
+There are two costmaps. The global one covers the whole map, in the map frame, built from the saved map plus live obstacles, and the planner uses it. The local one is a small rolling window around the robot, in the odom frame, from live sensor data, and the controller uses it.
+That is the local versus global split from the focus list. Many tuning problems come from changing one and forgetting the other.
+
+## The two inflation knobs
+@eq cost = 253 · e^(−cost_scaling_factor · (d − r_inscribed)) | inflation_radius sets where it reaches zero
+Inflation has two parameters. The inflation radius is how far from an obstacle the cost extends. The cost scaling factor is how fast it falls off: a high factor drops quickly, so the robot hugs walls; a low factor spreads cost wide, so it stays centred in corridors.
+A good starting point: radius a little larger than the robot, and a scaling factor around three. Then change one at a time.
+
+## Tune one parameter at a time
+- Corner clipping → larger inflation_radius or lower cost_scaling_factor
+- Refuses doorways → smaller inflation_radius or check robot_radius
+- Ghost obstacles linger → obstacle layer clearing, raytrace range
+- Note every change and its effect in your log
+The rule from the task: change one parameter at a time and write down the effect. If it clips corners, increase the inflation radius or lower the scaling factor. If it refuses doorways, reduce inflation or check the robot radius.
+If obstacles that have moved stay in the costmap, look at the obstacle layer's clearing and raytrace settings. Tune until it stops clipping corners on your five goals.
+
+## Behaviour trees
+\`\`\`xml
+<RecoveryNode number_of_retries="6">
+  <PipelineSequence>
+    <RateController hz="1.0">
+      <ComputePathToPose goal="{goal}" path="{path}"/>
+    </RateController>
+    <FollowPath path="{path}"/>
+  </PipelineSequence>
+  <ReactiveFallback>
+    <GoalUpdated/>
+    <RoundRobin>
+      <ClearEntireCostmap/>  <Spin/>  <Wait/>  <BackUp/>
+    </RoundRobin>
+  </ReactiveFallback>
+</RecoveryNode>
+\`\`\`
+Behaviour trees are how Nav2 orchestrates everything, and the article says it is the part beginners fail to grasp. This is a simplified default tree. The main branch recomputes the path once a second and follows it.
+If that branch fails, the recovery branch runs: clear the costmap, spin, wait, or back up, one at a time in rotation, and then the main branch is retried, up to six times.
+
+## Reading a behaviour tree
+| Node | Meaning |
+|---|---|
+| Sequence | run children in order; fail if any fails |
+| Fallback | try children until one succeeds |
+| Recovery | run main; on failure run recovery, then retry |
+| Action (leaf) | does something: plan, follow, spin |
+Four kinds of node cover most trees. A sequence runs children in order and fails if any fails. A fallback tries children until one succeeds. A recovery node pairs a main branch with a recovery branch. Leaves do the actual work.
+Open the real default XML today and trace what happens when the planner fails. If you can explain that path, you understand Nav2 better than most users.
+`,
+  key: [
+    'Costmaps hold cell costs; inflation keeps the robot away from obstacles.',
+    'Global costmap (map frame) feeds the planner; local (odom, rolling) feeds the controller.',
+    'inflation_radius sets reach; cost_scaling_factor sets falloff; tune one at a time.',
+    'Behaviour trees orchestrate Nav2: plan, follow, and recoveries on failure.'
+  ],
+  quiz: [
+    ['The robot clips corners. Which change helps?', ['Raise cost_scaling_factor', 'Increase inflation_radius', 'Reduce robot_radius', 'Disable the local costmap'], 1, 'More inflation keeps it further from walls.'],
+    ['In the Nav2 behaviour tree, what happens when following the path fails?', ['Nav2 crashes', 'Recovery actions run (clear, spin, wait, back up), then it retries', 'The map is deleted', 'It switches to mapping mode'], 1, 'The RecoveryNode handles failure.']
+  ]
+});
+
+D({
+  n: 110, icon: '🎥', topic: 'SLAM & Nav2', hours: 2.5, notion: '3f6cdfea8ce281c6be5be3a97892b965', svg: 'slam',
+  title: 'Record the autonomous-navigation video',
+  goal: 'The most compelling self-taught artifact — your robot navigating a map it built.',
+  tasks: [
+    'Screen-record: mapping → save → localization → multi-goal navigation (or Nav2 waypoint follower)',
+    'README for `month-4/slam-nav/`: video at top, architecture diagram, params you tuned, success rate, what broke',
+    'Read about the real-hardware tiers and RTAB-Map so you know the path to a real robot later',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Hardware for real SLAM, three tiers', '$0: Gazebo with a simulated lidar. Do the entire SLAM and Nav2 curriculum here first\n$250 to $450: DIY: RPLIDAR C1 at $69, a Raspberry Pi 4 or 5, a differential-drive base with encoders, a motor driver and a battery. Most learning per dollar, and the most yak-shaving\n$300 to $535: a ready platform. Hiwonder MentorPi M1 from $299.99 runs ROS 2 Humble on a Pi 5 with lidar and a depth camera. Waveshare\'s UGV Rover ROS 2 kit at $534.99 splits a Pi host and an ESP32 real-time controller, which is how real robots are actually architected']],
+  links: [
+    ['RTAB-Map for ROS 2', 'https://github.com/introlab/rtabmap_ros'],
+    ['Hiwonder MentorPi M1', 'https://www.hiwonder.com/products/mentorpi-m1'],
+    ['Waveshare UGV Rover ROS 2 kit', 'https://www.waveshare.com/ugv-rover-ros2-kit.htm']
+  ],
+  video: `
+## The most compelling artifact
+@big A robot navigating a map it built itself | the most compelling self-taught artifact
+The article says a video of a robot autonomously navigating a map it built itself is the most compelling artifact a self-taught roboticist can produce. Today you make it.
+It shows, in one minute, that you can integrate description, simulation, sensors, control, SLAM and navigation, which is the whole of Module 4.
+
+## The shot list
+1. Mapping: teleop around, the map growing in RViz (speed it up 4×)
+2. Save the map
+3. Restart in localization mode; set the initial pose
+4. Send several goals, or a waypoint list, and let it run
+5. End on the robot arriving at the last goal
+Plan the video as a shot list. Start with mapping, the map growing as you drive, sped up. Show the save. Restart in localization mode and set the initial pose, so it is clear the map is being reused.
+Then the payoff: several goals, or a waypoint list, with the robot driving itself through your world. End on it arriving. Keep the whole thing under two minutes.
+
+## The waypoint follower
+\`\`\`python
+from nav2_simple_commander.robot_navigator import BasicNavigator
+nav = BasicNavigator()
+nav.waitUntilNav2Active()
+nav.followWaypoints([pose(1.5, 0.0), pose(1.5, 2.0), pose(-1.0, 2.0), pose(0.0, 0.0)])
+while not nav.isTaskComplete():
+    fb = nav.getFeedback()
+print(nav.getResult())
+\`\`\`
+For a polished demo, script the goals with the Nav2 simple commander. Wait for Nav2 to become active, give it a list of poses, and it visits them in turn while you record.
+Behind the scenes this is an action, exactly like your drive distance server, with feedback and a result. Your own action server and Nav2 speak the same language.
+
+## The README
+- Video at the top
+- Architecture diagram: nodes, topics, TF tree, Nav2 servers
+- Parameters you tuned, with before and after
+- Success rate: goals reached out of attempts
+- What broke and how you fixed it
+The README for the SLAM and navigation folder follows the same pattern as before, with the video at the top. Add an architecture diagram, the parameters you tuned and why, a success rate out of your attempts, and an honest what-broke section.
+The tuning notes from yesterday are gold here: they show you understood what you changed, not just that it worked.
+
+## The path to a real robot
+| Tier | Cost | What |
+|---|---|---|
+| simulation | $0 | Gazebo + simulated lidar — do it all here first |
+| DIY | $250–450 | RPLIDAR C1, Pi 4/5, encoder base, driver, battery |
+| ready platform | $300–535 | MentorPi M1, or Waveshare UGV Rover (Pi + ESP32) |
+When you later move to real hardware, the article gives three tiers. Zero dollars: do the entire SLAM and Nav2 curriculum in Gazebo first, which is what you just did. The DIY tier: a cheap lidar, a Raspberry Pi and an encoder base: most learning per dollar, and the most yak shaving.
+Or a ready platform. The Waveshare rover splits a Pi host and an ESP32 real-time controller, which is how real robots are actually architected, and exactly the split you have learned. For 3D mapping with cameras, RTAB-Map is the next step.
+`,
+  key: [
+    'A robot navigating a map it built is the strongest self-taught portfolio video.',
+    'Shot list: mapping → save → localize → multi-goal navigation.',
+    'Nav2 simple commander scripts waypoints; it is an action underneath.',
+    'Real hardware later: sim first, then DIY (~$250–450) or a ready platform.'
+  ],
+  quiz: [
+    ['Why restart in localization mode in the demo video?', ['It looks nicer', 'It shows the saved map is being reused, not rebuilt', 'SLAM cannot navigate', 'It is faster to record'], 1, 'Map once, then navigate on it.'],
+    ['What makes the Waveshare UGV Rover architecture realistic?', ['It has a camera', 'It splits a Pi host and an ESP32 real-time controller', 'It runs MuJoCo', 'It has no lidar'], 1, 'High-level computer + real-time microcontroller.']
+  ]
+});
+
+D({
+  n: 111, icon: '🧪', topic: 'Milestone', hours: 2.5, notion: '3f6cdfea8ce2819b8ba6ea35aef85d4e', svg: 'tf',
+  title: 'Month 4 milestone test',
+  goal: 'Prove every Month 4 milestone item.',
+  tasks: [
+    'Broken-TF drill: comment out one static transform (e.g. lidar), relaunch, diagnose from errors + view_frames, fix. Time it',
+    'Write a tiny C++ node + Python node pair that uses a topic, a service and an action',
+    'Go through each milestone item and show it',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Month 4 Milestone', 'By the end of this month you should be able to:\nWrite ROS 2 nodes in both Python and C++ that use topics, services and actions\nDescribe your own robot in xacro with correct frames, inertias and collision geometry\nSimulate that robot in Gazebo with working lidar and camera sensors\nConfigure ros2_control and drive the robot through a controller rather than raw commands\nBuild a map with SLAM Toolbox and navigate autonomously with Nav2\nDiagnose a broken TF tree, which is the most common failure in the entire stack']],
+  links: [['Official ROS 2 Tutorials', 'https://docs.ros.org/en/jazzy/Tutorials.html']],
+  video: `
+## The broken-TF drill
+@big Diagnose a broken TF tree | the most common failure in the entire stack
+The last milestone item is the one the article stresses most: diagnosing a broken TF tree, the most common failure in the entire stack. Today you practise it under time pressure.
+Comment out one transform, say the lidar joint, relaunch everything, and time yourself from the first error to the fix. The goal is to make this boring and quick.
+
+## The diagnosis routine
+1. Read the error: which frame is missing or which lookup failed?
+2. ros2 run tf2_tools view_frames → find the break in the tree
+3. ros2 run tf2_ros tf2_echo base_link lidar_link → does it resolve?
+4. Find who should publish it: robot_state_publisher? a controller? SLAM?
+5. Fix, relaunch, re-check view_frames
+Follow the same routine every time. Read the error carefully: it names the frame. Run view frames and look for where the tree breaks into pieces. Use tf2 echo between two frames to test a specific link.
+Then ask who should publish the missing transform. Robot state publisher for links in your xacro; the diff drive controller for odom; SLAM for map. That question almost always leads straight to the fix.
+
+## Symptoms you should now recognise
+| What you see | Broken link |
+|---|---|
+| RViz: "no transform from lidar_link" | base_link → lidar_link (xacro/RSP) |
+| robot does not move in RViz, but does in Gazebo | odom → base_link (controller, odom frame) |
+| scan and map drift apart | map → odom (SLAM/AMCL not running) |
+| Nav2 "transform timeout" | use_sim_time mismatch |
+After this month, each of these symptoms should point you at one link. A missing lidar frame is the description. A robot frozen in RViz while moving in Gazebo is the odom transform. Scan and map drifting apart means map to odom is missing.
+And timeouts are almost always sim time. Practise until you can name the broken link from the symptom alone.
+
+## Topic, service and action, both languages
+- C++ node: publishes a topic and offers a service
+- Python node: subscribes, calls the service, sends an action goal
+- Reuse your DriveDistance action from section 3
+The second drill: a tiny pair of nodes, one C++ and one Python, that between them use a topic, a service and an action. Keep it small; the point is to show you can write all three in both languages without a tutorial open.
+Reuse your drive distance action for the action part. Then go through each milestone item and show it working, ticking them off on the Month 4 page.
+`,
+  key: [
+    'Practise the broken-TF drill until it is quick and boring.',
+    'Routine: read the error → view_frames → tf2_echo → who publishes it?',
+    'Map symptoms to links: description, odom, map, or sim time.',
+    'Show every milestone item, including nodes in both languages.'
+  ],
+  quiz: [
+    ['RViz shows the robot frozen while it moves in Gazebo. Which transform is likely missing?', ['base_link → lidar_link', 'odom → base_link', 'map → odom', 'camera_link → camera_optical_link'], 1, 'The odometry transform comes from the controller.'],
+    ['Which tool shows where the TF tree breaks into separate pieces?', ['view_frames', 'ros2 bag', 'colcon', 'rqt_console'], 0, 'It draws the whole tree.']
+  ]
+});
+
+D({
+  n: 112, icon: '🏁', topic: 'Review', hours: 1.5, notion: '3f6cdfea8ce281fdb0a0d245b562b76f', svg: 'pid',
+  title: 'Month 4 retro + Month 5 prep',
+  goal: 'Close Month 4 and be ready for the maths month.',
+  tasks: [
+    'Open the Month 4 page: tick milestones, tick Milestone met, fill the Retro',
+    'Review all Month 4 days: redo or set Skipped',
+    'Charge the balancer from Month 2 — Month 5 starts by reusing it',
+    'Read the Month 5 intro below',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Month 5 preview', 'Your goal this month: understand and implement the control and perception underneath everything you have built\nUp to now you have used libraries that did the hard parts for you\nThis month is where you learn what they were doing, because the difference between someone who can configure Nav2 and someone who can fix Nav2 when it misbehaves is exactly this material']],
+  links: [['Nav2 Tutorials', 'https://docs.nav2.org/rolling/tutorials/']],
+  video: `
+## Module 4 in one table
+| Section | You can now |
+|---|---|
+| ROS 2 fundamentals | write nodes in Python and C++; topics, services, actions, launch |
+| URDF, TF and Gazebo | describe a robot in xacro; debug TF; spawn it in Gazebo |
+| Simulation and ros2_control | lidar, camera, controllers, an action server |
+| SLAM and Nav2 | map a world and navigate it autonomously |
+Final day of Module 4. In four weeks you went from installing ROS 2 to a simulated robot that maps its world and navigates itself. That is the core software stack of nearly every mobile robot in industry.
+Write the retro on the Month 4 page: tick the milestones, and be honest about what still feels shaky. Redo or skip any unfinished days.
+
+## The retro questions
+- Which milestone was hardest, and why?
+- What broke most often? (Probably TF.)
+- One thing you can do now that you could not a month ago
+- Total hours this month
+Answer four questions. Which milestone was hardest. What broke most often; for most people it is TF. One thing you can do now that you could not before. And your total hours.
+These notes become interview stories. "Here is a bug I hit, here is how I found it" is one of the strongest answers you can give.
+
+## Why Module 5 is the maths month
+@big Configure Nav2 vs fix Nav2 | the difference is Module 5
+The Month 5 preview explains why maths comes now. Up to now you have used libraries that did the hard parts for you. This month you learn what they were doing.
+The article puts it sharply: the difference between someone who can configure Nav2 and someone who can fix Nav2 when it misbehaves is exactly this material: control theory, kinematics and vision.
+
+## Get ready
+- Charge the balancer from Module 2: Module 5 starts by reusing it
+- Python: numpy, scipy, matplotlib, python-control installed
+- Webcam and chessboard arriving for week 3
+Practical prep: charge the self-balancing robot from Module 2, because Module 5 opens by revisiting its PID loop with proper theory. Install numpy, scipy, matplotlib and python control.
+Your webcam and chessboard should arrive in time for the vision week. Congratulations on finishing Module 4. See you in Module 5.
+`,
+  key: [
+    'Module 4: ROS 2, URDF/TF, Gazebo, ros2_control, SLAM and Nav2.',
+    'Retro: hardest milestone, most common breakage, a new skill, hours.',
+    'Module 5 teaches the control, kinematics and vision under the libraries.',
+    'Charge the balancer and install the Python control stack.'
+  ],
+  quiz: [
+    ['According to the Month 5 preview, what separates configuring Nav2 from fixing it?', ['More RAM', 'Understanding the control and perception underneath', 'A newer ROS distro', 'A real lidar'], 1, 'That is exactly the Module 5 material.'],
+    ['Which Module 2 build does Module 5 start by reusing?', ['The line follower', 'The self-balancing robot', 'The SO-101 arm', 'The multimeter'], 1, 'Its PID loop gets proper theory.']
+  ]
+});
 // @@END

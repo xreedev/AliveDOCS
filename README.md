@@ -1,5 +1,7 @@
 # AliveDOCS — slides that follow the speaker
 
+> This repo's root `index.html` is now the **Robotics in 6 Months** course (see [COURSE.md](COURSE.md)). The AliveDOCS demo below lives at `alivedocs.html` (`npm start` still opens it).
+
 **AliveDOCS is a presentation that listens.** The speaker just talks, and the animated deck moves to the
 slide that matches what they're saying. There's no clicker, no cue sheet and no backstage operator. It works
 with free speech, not fixed keywords: "let's look at your inbox", "checking email" and "here's Mail" all
@@ -163,7 +165,7 @@ Other commands: `npm test` runs the slide-change rule tests. The Newton prototyp
 ## Project structure
 
 ```
-index.html            App UI + both keynote decks (slides, animations, deck data)
+alivedocs.html        App UI + both keynote decks (slides, animations, deck data)
 alive.js              Browser listener: splits any audio stream into phrases, sends them, reports results
 server.js             Static server + /listen: Sarvam transcription → Jev scoring → resolve() rules
 newton.html           Original Newton prototype
@@ -175,7 +177,7 @@ docs/screenshots/     Images used in this README
 
 A deck is just data plus markup. Every page sends its own slide list, so the server works for any talk.
 
-1. In `index.html`, add an entry to `DECKS`:
+1. In `alivedocs.html`, add an entry to `DECKS`:
 
    ```js
    mytalk: {

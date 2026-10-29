@@ -125,7 +125,7 @@ if (process.argv[1] === import.meta.filename) http
       }
 
       // static files from this folder
-      const file = path.join(import.meta.dirname, path.normalize(req.url === "/" ? "/index.html" : req.url.split("?")[0]));
+      const file = path.join(import.meta.dirname, path.normalize(req.url === "/" ? "/alivedocs.html" : req.url.split("?")[0]));
       if (req.method === "GET" && TYPES[path.extname(file)] && file.startsWith(import.meta.dirname) && fs.existsSync(file)) {
         res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] });
         return res.end(fs.readFileSync(file));

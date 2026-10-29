@@ -20,10 +20,20 @@ localStorage.
 It is a static site. Serve the folder with any static server (Web Workers don't load from `file://`):
 
 ```bash
-cd robotics-course
+cd AliveDOCS
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
+
+## Publish on GitHub Pages
+
+The course is plain static files at the repo root, so Pages can serve it directly:
+
+1. Push the branch you want to publish (for example `main`).
+2. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, then pick that branch and the `/ (root)` folder.
+3. Open `https://<your-user>.github.io/<repo>/`. The dashboard is `index.html`; lessons are `lesson.html?id=...`.
+
+All paths are relative, so it works under the `/<repo>/` sub-path. The empty `.nojekyll` file tells Pages to serve the files as-is. Progress is saved in each visitor's browser (localStorage).
 
 ## How the videos work
 

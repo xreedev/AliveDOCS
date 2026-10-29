@@ -1004,4 +1004,583 @@ Next section you give your robot simulated senses, a lidar and a camera, build a
     ['Which tool confirms the TF tree is a single connected piece?', ['rqt_graph', 'view_frames', 'ros2 bag', 'colcon'], 1, 'view_frames draws the whole tree.']
   ]
 });
+
+/* ───────────── Section 3 · Simulation and ros2_control ───────────── */
+
+D({
+  n: 99, icon: '📡', topic: 'Simulation', hours: 3, notion: '3f6cdfea8ce2810ea050caf18bc90954', svg: 'pointcloud',
+  title: 'Lidar + camera plugins and a custom world',
+  goal: 'Your robot in Gazebo with a working lidar and camera inside a world you built.',
+  tasks: [
+    'Add Gazebo lidar (gpu_lidar) and camera sensors to `lidar_link` and `camera_link` in your xacro',
+    'Bridge the topics to ROS 2 with ros_gz_bridge (/scan, /camera/image)',
+    'Build an SDF world: walls, boxes, a corridor. Save it in your package',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (Simulation)', 'Practice task: put your xacro robot from the last section into Gazebo, add a lidar plugin and a camera plugin, and build a custom SDF world with obstacles for it to sit in. Confirm the sensor data appears on ROS 2 topics and renders in RViz'],
+    ['Decision framework', 'Learn Gazebo first, because it is the only simulator natively wired into ROS 2 and it runs on the laptop you already own']
+  ],
+  links: [
+    ['Gazebo documentation and tutorials (sensors, SDF worlds)', 'https://gazebosim.org/docs/latest/getstarted/'],
+    ['Edouard Renard Level 2 (Gazebo plugins)', 'https://www.udemy.com/course/ros2-tf-urdf-rviz-gazebo/'],
+    ['Articulated Robotics tutorials', 'https://articulatedrobotics.xyz/tutorials/']
+  ],
+  video: `
+## Giving the robot senses
+@svg pointcloud | simulated sensors publish the same messages as real ones
+Today's practice task gives your simulated robot two senses: a lidar and a camera. Gazebo simulates them by ray casting and rendering the world from the sensor's point of view, and publishes the results as messages.
+The big idea is that simulated sensors publish exactly the same ROS message types as real ones: a LaserScan and an Image. So every node you write against the simulator will later run, unchanged, against real hardware.
+
+## A lidar in your xacro
+\`\`\`xml
+<gazebo reference="lidar_link">
+  <sensor name="lidar" type="gpu_lidar">
+    <topic>scan</topic>
+    <gz_frame_id>lidar_link</gz_frame_id>
+    <update_rate>10</update_rate>
+    <lidar>
+      <scan><horizontal>
+        <samples>360</samples>
+        <min_angle>-3.14</min_angle><max_angle>3.14</max_angle>
+      </horizontal></scan>
+      <range><min>0.12</min><max>12.0</max></range>
+    </lidar>
+    <visualize>true</visualize>
+  </sensor>
+</gazebo>
+\`\`\`
+A sensor goes inside a gazebo tag that references a link, here the lidar link you already defined. This one is a GPU lidar: 360 samples around a full circle, ten times a second, seeing from 12 centimetres to 12 metres. Those numbers roughly match a cheap real lidar.
+The frame ID matters: it tells ROS which TF frame the scan is measured in. Get it wrong, and the scan will appear in the wrong place in RViz.
+
+## A camera, the same way
+\`\`\`xml
+<gazebo reference="camera_link">
+  <sensor name="camera" type="camera">
+    <topic>camera/image</topic>
+    <gz_frame_id>camera_optical_link</gz_frame_id>
+    <update_rate>15</update_rate>
+    <camera>
+      <horizontal_fov>1.2</horizontal_fov>
+      <image><width>640</width><height>480</height></image>
+    </camera>
+  </sensor>
+</gazebo>
+\`\`\`
+The camera is almost identical: a field of view, an image size and a rate. One subtlety: ROS cameras use an optical frame, with z pointing forward out of the lens and x to the right, which is rotated from the usual robot convention of x forward.
+Most people add a small extra link, the camera optical link, with that rotation. You will need it in Module 5 for vision.
+
+## Bridging Gazebo to ROS 2
+\`\`\`bash
+ros2 run ros_gz_bridge parameter_bridge \\
+  /scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan \\
+  /camera/image@sensor_msgs/msg/Image[gz.msgs.Image \\
+  /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock
+\`\`\`
+Gazebo has its own transport, separate from ROS. The ros gz bridge translates between them. Each argument names a topic, the ROS type, a bracket for direction, and the Gazebo type. The opening square bracket means Gazebo to ROS only.
+Bridge the clock too, and set use sim time to true on your nodes, so everything agrees on simulated time. Once it works, move these into a YAML bridge config started from your launch file.
+
+## Build your own world
+\`\`\`xml
+<model name="wall_north">
+  <static>true</static>
+  <pose>0 3 0.5 0 0 0</pose>
+  <link name="link">
+    <collision name="c"><geometry><box><size>6 0.1 1</size></box></geometry></collision>
+    <visual name="v"><geometry><box><size>6 0.1 1</size></box></geometry></visual>
+  </link>
+</model>
+\`\`\`
+A world is an SDF file listing models: a ground plane, a light, and anything else. Walls and boxes are just static models with a box for collision and visual, placed with a pose.
+Build a small room with a corridor and a couple of boxes. It does not need to be pretty: it needs walls for the lidar to see, and later for SLAM to map. Save it in a worlds folder in your package and load it from your launch file.
+
+## The sensors system plugin
+- Sensors need the gz-sim-sensors-system plugin in the world (render_engine ogre2)
+- Gazebo shows no scan? Check the plugin first
+- ros2 topic hz /scan → about 10 Hz
+- ros2 topic echo /scan --once → ranges, not all inf
+One gotcha: Gazebo only runs sensors if the world loads the sensors system plugin. If your lidar produces nothing, check that first.
+Then confirm from ROS: topic hz on the scan should show about ten hertz, and echoing one message should show real distances to your walls, not a list of infinities. Tomorrow you look at this data in RViz.
+`,
+  key: [
+    'Simulated sensors publish the same message types as real ones, so code transfers.',
+    'Sensors attach to links via gazebo tags; the frame ID must match a TF frame.',
+    'ros_gz_bridge translates Gazebo topics to ROS 2; bridge /clock and use sim time.',
+    'Worlds are SDF files of static models; sensors need the sensors system plugin.'
+  ],
+  quiz: [
+    ['Why is it useful that the simulated lidar publishes sensor_msgs/LaserScan?', ['It is smaller', 'Code written against the simulator runs unchanged on real hardware', 'Gazebo requires it', 'RViz cannot show anything else'], 1, 'Same interface, sim or real.'],
+    ['Your /scan topic exists in Gazebo but not in ROS 2. What is missing?', ['A URDF joint', 'The ros_gz_bridge for that topic', 'A colcon build of Gazebo', 'A camera'], 1, 'Gazebo transport and ROS 2 are separate until bridged.']
+  ]
+});
+
+D({
+  n: 100, icon: '👀', topic: 'Simulation', hours: 2.5, notion: '3f6cdfea8ce28180a43fc302d23a290a', svg: 'pointcloud',
+  title: 'Sensors in RViz + a first look at MuJoCo',
+  goal: 'Finish the simulation practice task, and know when to reach for MuJoCo or Isaac instead.',
+  tasks: [
+    'Show LaserScan and Image in RViz. Check the scan lines up with the walls (if not: TF to lidar frame!)',
+    'Screenshot Gazebo + RViz side by side',
+    '`pip install mujoco`. Load one example model and run the viewer. Note how fast it is on CPU',
+    'Read the simulator decision framework. Write which simulator you will use for what',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Decision framework', 'Learn Gazebo first, because it is the only simulator natively wired into ROS 2 and it runs on the laptop you already own\nGo to MuJoCo when you want reinforcement learning or locomotion, and it still needs no GPU\nGo to Isaac Sim or Isaac Lab only when you have the RTX hardware and a specific reason\nSkip PyBullet, which has had no release since 2022 and whose maintainers closed the issue tracker\nWatch Genesis but do not build a portfolio on it yet, since v1.0 is fresh and it has no ROS 2 integration'],
+    ['Month 4 Milestone (this one)', 'Simulate that robot in Gazebo with working lidar and camera sensors']
+  ],
+  links: [
+    ['MuJoCo', 'https://mujoco.readthedocs.io/en/stable/overview.html'],
+    ['NVIDIA Isaac Sim requirements (RTX 4080+)', 'https://docs.isaacsim.omniverse.nvidia.com/6.0.0/installation/requirements.html']
+  ],
+  video: `
+## Seeing the sensors in RViz
+- Fixed frame: odom (or base_link for now)
+- Add → LaserScan → topic /scan → size 0.03
+- Add → Image → topic /camera/image
+- Add → RobotModel and TF, as before
+Open RViz next to Gazebo. Set the fixed frame, then add a LaserScan display on the scan topic and an Image display on the camera topic, alongside the robot model.
+You should see red dots tracing the walls of your world around the robot, and a small window showing what the camera sees. This is the Module 4 milestone: a simulated robot with working lidar and camera.
+
+## When the scan does not line up
+| Symptom | Cause |
+|---|---|
+| no dots, "no transform" warning | frame ID in the sensor does not match a TF frame |
+| dots rotated or offset from walls | lidar joint origin wrong in xacro |
+| dots appear, then vanish | timestamps: use_sim_time missing on some nodes |
+| image is black | sensors plugin or render engine missing |
+If the dots do not sit on the walls, it is almost always TF, exactly as the task says. No dots at all, with a transform warning, means the scan's frame ID does not exist in the tree. Dots rotated or shifted mean the lidar joint's origin is wrong.
+Dots that flicker and vanish usually mean some nodes use wall time and others simulated time. Set use sim time everywhere.
+
+## The simulator landscape
+| Simulator | Use it for | Needs |
+|---|---|---|
+| Gazebo | ROS 2 robots, sensors, Nav2 | your laptop |
+| MuJoCo | RL, locomotion, fast contact physics | CPU only |
+| Isaac Sim / Lab | photoreal, massive parallel RL | RTX 4080 class GPU |
+| PyBullet | skip: no release since 2022 | — |
+| Genesis | watch, not yet for a portfolio | — |
+The article's decision framework is clear. Learn Gazebo first, because it is the only simulator natively wired into ROS 2 and runs on your laptop. Go to MuJoCo when you want reinforcement learning or locomotion; it still needs no GPU.
+Isaac Sim and Isaac Lab only when you have the RTX hardware and a specific reason. Skip PyBullet, which is unmaintained. Watch Genesis, but do not build a portfolio on it yet.
+
+## A first taste of MuJoCo
+\`\`\`python
+# pip install mujoco
+import mujoco, mujoco.viewer
+
+model = mujoco.MjModel.from_xml_path("humanoid.xml")   # from the MuJoCo repo's model folder
+data  = mujoco.MjData(model)
+mujoco.viewer.launch(model, data)
+\`\`\`
+MuJoCo installs with one pip command. Load an example model, such as the humanoid, and launch the viewer. Watch how fast it simulates on just your CPU: thousands of physics steps a second.
+That speed is why reinforcement learning uses it. Training a policy needs millions of simulated steps, and MuJoCo makes that practical on a laptop. You return to it in Module 6.
+
+## Gazebo or MuJoCo for this task?
+- Gazebo: full robot stack, sensors, ROS 2 topics, Nav2 — today's robot
+- MuJoCo: physics only, no ROS, perfect for learning a policy — Module 6
+- Write down: which simulator for which job, in your own words
+They are not competitors so much as different tools. Gazebo simulates a whole robot system, sensors and all, talking ROS 2, which is what you need for SLAM and navigation next section. MuJoCo is a superb physics engine with no ROS in the loop, ideal for learning.
+Finish today by writing, in your own words, which simulator you will use for which job. Then take your side-by-side screenshot and tick the practice task.
+`,
+  key: [
+    'RViz LaserScan dots should trace the walls; if not, check TF and frame IDs.',
+    'Use sim time everywhere when running against Gazebo.',
+    'Gazebo first (ROS 2 native); MuJoCo for RL and locomotion on CPU; Isaac only with RTX and a reason.',
+    'Skip PyBullet; watch Genesis but do not build a portfolio on it yet.'
+  ],
+  quiz: [
+    ['The lidar dots in RViz are rotated 90° from the walls. Most likely cause?', ['Wrong message type', 'The lidar joint origin in the xacro is wrong', 'MuJoCo is running', 'The world is too small'], 1, 'Placement problems are TF problems.'],
+    ['You want to train a locomotion policy with RL on a laptop without a GPU. Which simulator?', ['Isaac Lab', 'MuJoCo', 'PyBullet', 'Genesis'], 1, 'Fast contact physics on CPU.']
+  ]
+});
+
+D({
+  n: 101, icon: '🎛️', topic: 'ros2_control', hours: 2.5, notion: '3f6cdfea8ce281e2a160cfd9e1d04d94', svg: 'motor',
+  title: 'ros2_control concepts + tags in your xacro',
+  goal: 'Understand hardware interfaces and the controller manager, and add <ros2_control> to your robot.',
+  tasks: [
+    'Read the ros2_control docs: architecture, hardware interfaces, controller manager',
+    'Read Articulated Robotics on ros2_control',
+    'Add `<ros2_control>` tags with the gz_ros2_control system plugin and velocity command interfaces for the wheels',
+    'Draw the data flow: teleop → controller → hardware interface → Gazebo joint',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['5. ros2_control', 'This is the topic most self-taught candidates have never touched, which makes it the fastest way to differentiate yourself'],
+    ['ros2_control documentation', 'Where URDF meets actuation: hardware interfaces, controller manager, and the <ros2_control> tags that go in your xacro']
+  ],
+  links: [
+    ['ros2_control documentation', 'https://control.ros.org/rolling/index.html'],
+    ['Articulated Robotics, ros2_control on real hardware', 'https://articulatedrobotics.xyz/tutorials/mobile-robot/applications/ros2_control-real/']
+  ],
+  video: `
+## Why ros2_control matters
+@big Most self-taught candidates have never touched it | the fastest way to stand out
+The article is direct: ros2 control is the topic most self-taught candidates have never touched, which makes it the fastest way to differentiate yourself. Professional robots almost all use it.
+Until now you would drive a robot by publishing velocity and having some node turn that into motor commands. ros2 control replaces that ad hoc glue with a standard framework, the same for a toy rover and an industrial arm.
+
+## The architecture
+@eq controller (diff_drive) → controller manager → hardware interface → joints | same controllers, any hardware
+There are three layers. Controllers are algorithms: a differential drive controller, a joint trajectory controller for an arm. The controller manager loads them and runs them in a real-time loop. Hardware interfaces talk to the actual motors.
+The key separation: controllers never know what hardware they drive. Swap the Gazebo hardware interface for your real motor driver, and the very same controller and YAML keep working. That is how sim-to-real stays sane.
+
+## Command and state interfaces
+| Interface | Direction | Examples |
+|---|---|---|
+| command | controller → hardware | velocity, position, effort |
+| state | hardware → controller | position, velocity, effort |
+Every joint exposes interfaces. Command interfaces are what a controller can write: a velocity, a position or an effort, which means torque. State interfaces are what it can read back: usually position and velocity from the encoders.
+For your wheels, the command is velocity, and the state is position and velocity. It is exactly the encoder and motor loop you built by hand in Module 2, now standardised.
+
+## The tags in your xacro
+\`\`\`xml
+<ros2_control name="GazeboSystem" type="system">
+  <hardware>
+    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+  </hardware>
+  <joint name="left_wheel_joint">
+    <command_interface name="velocity">
+      <param name="min">-10</param><param name="max">10</param>
+    </command_interface>
+    <state_interface name="position"/>
+    <state_interface name="velocity"/>
+  </joint>
+  <!-- same for right_wheel_joint -->
+</ros2_control>
+\`\`\`
+This is where URDF meets actuation. The ros2 control tag names a hardware plugin, here the Gazebo system from gz ros2 control, and lists each joint with its command and state interfaces.
+Later, for the real robot, you change only the plugin line to your own hardware interface. Everything below it stays the same.
+
+## Loading it in Gazebo
+\`\`\`xml
+<gazebo>
+  <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+    <parameters>$(find my_robot)/config/controllers.yaml</parameters>
+  </plugin>
+</gazebo>
+\`\`\`
+One more gazebo tag loads the gz ros2 control plugin, which starts a controller manager inside the simulator and points it at your controllers YAML. You write that YAML tomorrow.
+Install the package with apt: ros jazzy gz ros2 control. Then rebuild, relaunch, and check ros2 control list hardware interfaces: your wheel interfaces should be listed.
+
+## Draw the data flow
+- teleop_twist_keyboard → /cmd_vel (Twist)
+- diff_drive_controller → wheel velocity commands
+- gz_ros2_control hardware → Gazebo wheel joints
+- joint states back up → joint_state_broadcaster → /joint_states → TF
+Finish by drawing the data flow on paper. Teleop publishes a velocity. The diff drive controller converts it into a velocity for each wheel. The hardware interface applies those to the Gazebo joints. Joint states come back up and are broadcast for TF.
+If you can draw this from memory, you understand ros2 control better than most applicants.
+`,
+  key: [
+    'ros2_control is a standard framework for actuation and a big differentiator.',
+    'Controllers → controller manager → hardware interface; controllers never know the hardware.',
+    'Joints expose command (velocity/position/effort) and state interfaces.',
+    'Swap only the hardware plugin to move from Gazebo to a real robot.'
+  ],
+  quiz: [
+    ['What changes when you move from Gazebo to real hardware with ros2_control?', ['The controllers', 'The hardware interface plugin', 'The YAML gains', 'The topic names'], 1, 'Controllers stay; only the hardware layer changes.'],
+    ['For a velocity-driven wheel, which is a command interface?', ['position', 'velocity', 'temperature', 'joint_states'], 1, 'The controller writes velocity; it reads position and velocity.']
+  ]
+});
+
+D({
+  n: 102, icon: '🕹️', topic: 'ros2_control', hours: 3, notion: '3f6cdfea8ce281eaafe7c98aac558f06', svg: 'motor',
+  title: 'diff_drive_controller + keyboard teleop',
+  goal: 'Drive your simulated robot through a controller, not raw commands.',
+  tasks: [
+    'Write the controllers YAML: diff_drive_controller (wheel separation, radius) + joint_state_broadcaster',
+    'Spawn both controllers from your launch file. Check with `ros2 control list_controllers`',
+    "Drive with teleop_twist_keyboard (remap to the controller's cmd_vel; Jazzy expects stamped twist by default — check the controller params)",
+    'Check /odom looks sane when you drive 1 m forward',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (ros2_control)', 'Practice task: add <ros2_control> tags to your robot, configure diff_drive_controller and joint_state_broadcaster through YAML, and drive it in Gazebo with keyboard teleop'],
+    ['Month 4 Milestone (this one)', 'Configure ros2_control and drive the robot through a controller rather than raw commands']
+  ],
+  links: [
+    ['ros2_control documentation', 'https://control.ros.org/rolling/index.html'],
+    ['Articulated Robotics tutorials', 'https://articulatedrobotics.xyz/tutorials/'],
+    ['teleop_twist_keyboard', 'https://github.com/ros2/teleop_twist_keyboard', 'extra']
+  ],
+  video: `
+## The controllers YAML
+\`\`\`yaml
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+
+diff_drive_controller:
+  ros__parameters:
+    left_wheel_names:  ["left_wheel_joint"]
+    right_wheel_names: ["right_wheel_joint"]
+    wheel_separation: 0.17
+    wheel_radius: 0.033
+    base_frame_id: base_link
+    odom_frame_id: odom
+    publish_rate: 50.0
+\`\`\`
+Today's practice task is driving through a controller. The YAML has two parts. First, the controller manager's update rate and the list of controllers it can load, with their types. Second, each controller's own parameters.
+For the diff drive controller, the critical numbers are wheel separation and wheel radius. They must match your xacro exactly, because the controller uses them to turn velocity into wheel speeds and wheel rotation back into odometry.
+
+## The kinematics inside
+@eq v_left = (v − ω·L/2) / r ·  v_right = (v + ω·L/2) / r | L = wheel separation, r = wheel radius
+Here is what the diff drive controller actually computes. Given a forward speed v and a turn rate omega, each wheel's angular speed is that speed, minus or plus omega times half the separation, divided by the wheel radius.
+It also runs this backwards, integrating wheel rotations into the odom transform. That is why a wrong radius makes the robot think it travelled further or shorter than it did. You derived the same equation in Module 3.
+
+## Spawning the controllers
+\`\`\`python
+Node(package='controller_manager', executable='spawner',
+     arguments=['joint_state_broadcaster']),
+Node(package='controller_manager', executable='spawner',
+     arguments=['diff_drive_controller']),
+\`\`\`
+In your launch file, add one spawner node per controller. The spawner asks the controller manager to load, configure and activate the controller.
+Then check with ros2 control list controllers. Both should say active. If one is inactive or missing, the error is usually in the YAML: a wrong joint name or a typo in the type.
+
+## Driving with teleop
+\`\`\`bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args \\
+  -p stamped:=true \\
+  -r cmd_vel:=/diff_drive_controller/cmd_vel
+\`\`\`
+The controller listens on its own topic, diff drive controller slash cmd vel, so remap teleop onto it. In Jazzy, the controller expects a stamped twist, a velocity with a timestamp and frame, so tell teleop to publish stamped messages.
+If you press keys and nothing moves, run topic info on that topic and compare the message types. A type mismatch is the most common problem today.
+
+## Is the odometry sane?
+| Check | Expected |
+|---|---|
+| drive ~1 m forward | /odom x ≈ 1.0, y ≈ 0 |
+| spin on the spot | x, y stay near 0; yaw changes |
+| RViz, fixed frame odom | robot moves on screen as in Gazebo |
+| ros2 run tf2_tools view_frames | odom → base_link now present |
+Drive about one metre forward and echo the odometry. The x position should read close to one, and y close to zero. Spin on the spot, and the position should barely change while the yaw does.
+Then set RViz's fixed frame to odom: the robot should move on screen exactly as it moves in Gazebo. If the odometry says 1.5 metres when you moved one, check the wheel radius. Record the numbers in your log.
+`,
+  key: [
+    'diff_drive_controller and joint_state_broadcaster are configured in YAML.',
+    'Wheel separation and radius must match the xacro, or odometry will be wrong.',
+    'Spawner nodes activate controllers; check with ros2 control list_controllers.',
+    'Jazzy diff_drive expects stamped twists on /diff_drive_controller/cmd_vel.'
+  ],
+  quiz: [
+    ['You drive 1 m but /odom reports 1.5 m. Most likely cause?', ['Wrong wheel radius in the YAML', 'The lidar frame', 'The world file', 'Missing camera'], 0, 'Odometry integrates wheel rotation × radius.'],
+    ['Teleop runs but the robot does not move. First thing to check?', ['The camera image', 'The topic name and message type the controller expects', 'MuJoCo version', 'Git status'], 1, 'Remap and stamped vs unstamped twist.']
+  ]
+});
+
+D({
+  n: 103, icon: '🎯', topic: 'ros2_control', hours: 3, notion: '3f6cdfea8ce281949bbfc6857050376d', svg: 'robot',
+  title: 'Action server: drive a commanded distance',
+  goal: 'An action server that drives X metres, reports progress, and can be cancelled.',
+  tasks: [
+    'Define `DriveDistance.action` (goal: distance, feedback: remaining, result: travelled)',
+    'Server: subscribe to /odom, publish to cmd_vel, send feedback at 10 Hz, stop at target, handle cancel',
+    'Client: send 2 m, print feedback, cancel halfway in a second test',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Practice task (ros2_control)', 'Then write an action server that drives a commanded distance and reports progress, with feedback and cancellation. Actions plus ros2_control in one project is a genuinely strong portfolio piece']],
+  links: [
+    ['Official ROS 2 Tutorials (actions)', 'https://docs.ros.org/en/jazzy/Tutorials.html'],
+    ['Automatic Addison ("how do I write an action in Jazzy")', 'https://automaticaddison.com/tutorials/']
+  ],
+  video: `
+## Why this is a portfolio piece
+@big Actions + ros2_control in one project | a genuinely strong portfolio piece
+The article calls this combination a genuinely strong portfolio piece. Today you write an action server that drives the robot a commanded distance, reports progress, and can be cancelled, all on top of the ros2 control setup from yesterday.
+It shows an interviewer you understand all three communication types, odometry, controllers and clean shutdown, in one small, demonstrable project.
+
+## Define the action
+\`\`\`text
+# my_interfaces/action/DriveDistance.action
+float32 distance        # goal: metres to drive
+---
+float32 travelled       # result
+bool    success
+---
+float32 remaining       # feedback
+\`\`\`
+An action file has three parts separated by dashes: the goal, the result, and the feedback. The goal is a distance. The result is how far you actually travelled. Feedback, sent while running, is the distance remaining.
+Add it to your interfaces package, list it in CMakeLists, rebuild and source, then check with ros2 interface show.
+
+## The server loop
+\`\`\`python
+def execute(self, goal_handle):
+    start = self.pose_xy()
+    target = goal_handle.request.distance
+    fb = DriveDistance.Feedback()
+    rate = self.create_rate(10)
+    while rclpy.ok():
+        if goal_handle.is_cancel_requested:
+            self.stop(); goal_handle.canceled()
+            return DriveDistance.Result(travelled=self.dist(start), success=False)
+        done = self.dist(start)
+        if done >= target:
+            break
+        self.drive(0.15)                       # m/s, via the controller's cmd_vel
+        fb.remaining = target - done
+        goal_handle.publish_feedback(fb)
+        rate.sleep()
+    self.stop(); goal_handle.succeed()
+    return DriveDistance.Result(travelled=self.dist(start), success=True)
+\`\`\`
+The execute callback records the starting position from odometry, then loops ten times a second. Each pass it checks for cancellation, measures distance travelled, drives forward if it is not there yet, and publishes the remaining distance as feedback.
+When it arrives or is cancelled, it always stops the robot first, then reports the result. Stopping first is the rule: never leave a robot driving because your code returned early.
+
+## The executor trap
+- The odom callback must keep running while execute loops
+- Use a MultiThreadedExecutor + a ReentrantCallbackGroup
+- Symptom if you forget: distance never changes, the loop runs forever
+Here is the trap that catches almost everyone. Your execute loop runs inside a callback. With the default single-threaded executor, the odometry subscription cannot run while it loops, so the distance never updates and the robot drives forever.
+The fix is a multi-threaded executor with a reentrant callback group, so odometry keeps arriving while the action runs. If your robot never stops, this is why.
+
+## The client and the cancel test
+\`\`\`bash
+ros2 action send_goal --feedback /drive_distance \\
+  my_interfaces/action/DriveDistance "{distance: 2.0}"
+# second test: Ctrl-C partway → the goal is cancelled, robot stops
+\`\`\`
+Test from the command line first: send a two metre goal with feedback, and watch remaining count down to zero. Then press control C partway through; the CLI cancels the goal, and your server should stop the robot and report the distance actually travelled.
+Then write a small Python client that does the same and cancels automatically after one metre. Both tests belong in tomorrow's demo video.
+`,
+  key: [
+    'An .action file has goal, result and feedback sections separated by ---.',
+    'The server loops: check cancel → measure → drive → publish feedback.',
+    'Always stop the robot before returning, on success or cancel.',
+    'Use a MultiThreadedExecutor with a reentrant group so odom keeps updating.'
+  ],
+  quiz: [
+    ['Your action server drives forever and the distance never updates. Most likely cause?', ['Wrong action file', 'A single-threaded executor blocks the odom callback during execute', 'The lidar', 'Teleop is running'], 1, 'Use a MultiThreadedExecutor and a reentrant callback group.'],
+    ['What should the server do first when a cancel is requested?', ['Publish feedback', 'Stop the robot', 'Restart the goal', 'Ignore it'], 1, 'Safety first, then report the result.']
+  ]
+});
+
+D({
+  n: 104, icon: '🎬', topic: 'ros2_control', hours: 2.5, notion: '3f6cdfea8ce281f1bfe6d3ba777553fb', svg: 'robot',
+  title: 'Polish the action demo + README',
+  goal: 'A portfolio-ready ros2_control + action project.',
+  tasks: [
+    'Measure accuracy: command 1 m, 2 m, 3 m. Record actual distance from Gazebo ground truth',
+    'Record a screen video (Gazebo + terminal feedback + a cancel)',
+    'README for `month-4/my_robot/`: architecture diagram (nodes, topics, controllers), numbers, video, what broke',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Reminder', 'Actions plus ros2_control in one project is a genuinely strong portfolio piece']],
+  links: [['ros2_control documentation', 'https://control.ros.org/rolling/index.html']],
+  video: `
+## Measure, do not guess
+| Commanded | Odom says | Gazebo truth | Error |
+|---|---|---|---|
+| 1.0 m | | | |
+| 2.0 m | | | |
+| 3.0 m | | | |
+A portfolio project needs numbers. Command one, two and three metres, and for each record what odometry says and what actually happened, from Gazebo's ground truth pose of the model.
+The difference between odometry and truth is your odometry error. In simulation it is small, but not zero, and it grows with distance. Note the trend: that drift is exactly why SLAM exists, as you will see next section.
+
+## Getting ground truth
+- Gazebo GUI: select the model → Component inspector → Pose
+- Or bridge the model pose topic to ROS 2
+- Reset between runs so every test starts at the origin
+The simplest ground truth is in the Gazebo GUI: select your robot and read its pose in the component inspector. For something repeatable, bridge Gazebo's pose topic to ROS and log it.
+Reset the simulation between runs, so every test starts from the same place. Three clean runs beat ten messy ones.
+
+## Why it overshoots
+@eq stop distance ≈ v² / (2·a) | at 0.15 m/s with soft braking, a few centimetres
+If your robot always overshoots slightly, that is physics, not a bug. The loop decides to stop only after it has passed the target, and the robot then takes time to decelerate.
+A neat improvement is to slow down as the remaining distance shrinks: make speed proportional to remaining distance, with a minimum. That is a proportional controller, a preview of Module 5. Try it, and compare the error table before and after.
+
+## Record the demo
+- Gazebo and a terminal with feedback, side by side
+- One full 2 m goal, then one cancelled partway
+- Under one minute; no narration needed, add captions
+Record your screen with Gazebo and the feedback terminal side by side. Show one complete two metre goal with remaining counting down, then one goal cancelled halfway, with the robot stopping cleanly.
+Keep it under a minute. Recruiters and interviewers do watch short videos; they rarely read long code.
+
+## The README
+\`\`\`text
+month-4/my_robot/README.md
+  1. What it is (one paragraph + GIF)
+  2. Architecture: nodes · topics · controllers (diagram)
+  3. How to run: three commands
+  4. Results: the accuracy table
+  5. What broke and how I fixed it
+\`\`\`
+The README is the front door of the project. One paragraph and a GIF saying what it is. An architecture diagram of nodes, topics and controllers. Three commands to run it. The accuracy table. And an honest what-broke section.
+That last part is what makes it credible. Every real robotics engineer knows things break; showing how you debugged them is the evidence of skill. Tick the practice task when it is pushed.
+
+## Talking about it in an interview
+- "I configured ros2_control with a diff drive controller in Gazebo"
+- "I wrote an action server with feedback and cancellation"
+- "Odometry error was about X percent at 3 m; here is why"
+Practise describing the project in three sentences. What you configured, what you wrote, and one measured result with an explanation. Numbers and reasons are what separate a tutorial follower from an engineer.
+If an interviewer asks what you would do next, you already have an answer: proportional slow-down, then running the same controller on real hardware, which is exactly where this course goes.
+`,
+  key: [
+    'Measure commanded vs odometry vs ground truth; record the error table.',
+    'Odometry drift grows with distance — the reason SLAM exists.',
+    'Overshoot comes from stopping late; a proportional slow-down reduces it.',
+    'A short demo video plus a README with architecture, numbers and failures.'
+  ],
+  quiz: [
+    ['What does the difference between /odom and Gazebo ground truth measure?', ['Lidar noise', 'Odometry error (drift)', 'Network delay', 'Controller rate'], 1, 'And it grows with distance.'],
+    ['How can you reduce overshoot at the target?', ['Drive faster', 'Slow down in proportion to the remaining distance', 'Publish feedback more often', 'Remove the cancel check'], 1, 'A simple proportional controller.']
+  ]
+});
+
+D({
+  n: 105, icon: '🔁', topic: 'Review', hours: 2, notion: '3f6cdfea8ce2811ab42dead38d9fc26c', svg: 'costmap',
+  title: 'Week 3 review + catch-up',
+  goal: 'A reliable simulated robot (sensors + controller + odom) before SLAM.',
+  tasks: [
+    'Finish unfinished tasks from M4 Days 15–20',
+    'Drive around the world for 2 minutes. Does /odom drift a lot? Note it (SLAM depends on it)',
+    'Look at the Month 5 gear list — you order on Day 22',
+    'Update Confidence on Days 15–20'
+  ],
+  links: [['Nav2 Getting Started', 'https://docs.nav2.org/rolling/getting_started/index.html']],
+  video: `
+## The stack so far
+| Layer | You built |
+|---|---|
+| description | xacro robot, TF tree, inertials |
+| simulation | Gazebo world, lidar, camera, bridge |
+| control | ros2_control, diff_drive, odometry |
+| behaviour | DriveDistance action with feedback and cancel |
+Review day. Look at what you have built in three weeks: a described robot with a clean TF tree, simulated in a world of your own with a lidar and a camera, driven through ros2 control, with an action server on top.
+That is a real robot software stack. Next section adds the two things everyone associates with mobile robots: mapping and autonomous navigation.
+
+## The two-minute drift test
+- Teleop around the world for two minutes, then return to the start
+- Compare /odom with where the robot really is
+- Note it in your log: SLAM depends on it
+Today's key test: drive around your world for two minutes, with turns, then return to where you started. Compare what odometry says with where the robot actually is.
+The error will be noticeable, especially after turns. Note it. SLAM uses the lidar to correct this drift, but it starts from odometry, so the better your odometry, the better your maps.
+
+## Readiness checklist
+- /scan at ~10 Hz, dots on the walls in RViz
+- controllers active; teleop drives smoothly
+- odom → base_link in TF; use_sim_time everywhere
+- one launch file brings it all up
+Before SLAM, check this list. The scan is steady and lines up with the walls. Both controllers are active and teleop drives smoothly. The TF tree has odom to base link, and every node uses sim time. And one launch file brings everything up.
+If any item fails, fix it today. SLAM will magnify every one of these problems.
+
+## Order Module 5 gear
+@big You order on Day 22 | look at the gear list today
+Also today: open the Gear tab and look at the Module 5 list. You order on day 22, so decide now what you need, and check delivery times.
+Next section is SLAM and Nav2: building a map of your world with the lidar, then sending the robot to goals autonomously while it avoids obstacles. Everything you built this month comes together.
+`,
+  key: [
+    'Description + simulation + control + an action: a full robot software stack.',
+    'Odometry drifts, especially with turns; SLAM corrects it using the lidar.',
+    'Check scan, controllers, TF and sim time before starting SLAM.',
+    'Choose Module 5 gear today; order on Day 22.'
+  ],
+  quiz: [
+    ['Why does good odometry matter for SLAM?', ['SLAM ignores odometry', 'SLAM starts from odometry and corrects it with the lidar', 'Odometry replaces the lidar', 'It only matters for cameras'], 1, 'Better odometry → better maps.'],
+    ['Which is NOT on the pre-SLAM readiness list?', ['/scan at about 10 Hz', 'Controllers active', 'A trained RL policy', 'use_sim_time everywhere'], 2, 'RL is Module 6.']
+  ]
+});
 // @@END

@@ -499,4 +499,490 @@ Continue any skipped Robotics Course units, and update your Confidence ratings.
     ['Which policy type predicts chunks of future actions?', ['Behaviour cloning', 'ACT', 'Diffusion Policy', 'LQR'], 1, 'Action Chunking with Transformers.']
   ]
 });
+
+// ───────────── Section 2 · Deploy, iterate and VLAs ─────────────
+D({
+  n: 148, icon: '🧪', topic: 'Robot learning', hours: 3, notion: '3f6cdfea8ce2817caec2f670017876fc', svg: 'arm',
+  title: 'Deploy ACT + measure success rate',
+  goal: 'The "before" number.',
+  tasks: [
+    'Run the policy on the arm (LeRobot eval/record with policy). Stand by to stop it',
+    '20 trials with the cube in varied positions. Count successes',
+    'Write down each failure type (missed grasp, wrong position, drop, freeze)',
+    'Film 3 successes and 3 failures',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Practice task (LeRobot)', 'It will work maybe half the time']],
+  links: [['LeRobot SO-101 setup guide', 'https://huggingface.co/docs/lerobot/so101']],
+  video: `
+## The moment of truth
+@big It will work maybe half the time
+Today your trained policy drives the arm on its own for the first time. The article sets expectations honestly: it will work maybe half the time. That is normal, and it is the point.
+Your job is not to be disappointed, but to measure precisely: the before number, and exactly how it fails.
+
+## Run the policy
+\`\`\`bash
+lerobot-record \\
+  --robot.type=so101_follower --robot.port=/dev/ttyACM0 --robot.id=follower \\
+  --robot.cameras="{front: {...}, wrist: {...}}" \\
+  --policy.path=outputs/train/act_so101_cube/checkpoints/last/pretrained_model \\
+  --dataset.repo_id=YOUR_HF_USER/eval_so101_cube_bin \\
+  --dataset.single_task="Pick the cube and drop it in the bin" \\
+  --dataset.num_episodes=20
+\`\`\`
+In LeRobot, you run a policy with the record command, pointing at a trained checkpoint instead of a leader arm. It drives the follower and records evaluation episodes, so every trial is saved for later analysis.
+Use the same camera settings as during recording. Check the docs for the exact current flags.
+
+## Safety first
+- One hand near the power switch or the stop key
+- Start with the cube in an easy, central position
+- If the arm pushes hard against the table or itself: stop immediately
+A learned policy can do unexpected things: drive into the table, squeeze too hard, or move fast toward somewhere it should not. Keep one hand near the power or stop key for every trial.
+Start with an easy central cube position to confirm it basically works, then begin the twenty measured trials.
+
+## Twenty trials, one protocol
+| Trial | Cube spot (grid) | Success? | Failure type |
+|---|---|---|---|
+| 1 | 5 | ✔ | — |
+| 2 | 1 | ✘ | missed grasp |
+| 3 | 9 | ✘ | froze above bin |
+| … | | | |
+Run twenty trials, taking cube positions from your grid so every area is tested, and fill in the score sheet. Success means the cube ends up in the bin, nothing less.
+Use exactly the same protocol you will use after retraining: same positions, same order, same success rule. Only then is the before-and-after comparison fair.
+
+## Classify the failures
+- Missed grasp: gripper closes beside the cube
+- Wrong position: goes to where the cube usually is, not where it is
+- Drop: grasps, then loses the cube while carrying
+- Freeze or hesitate: stops, jitters, or loops
+For every failure, write down its type. Missed grasps. Wrong position, where the arm goes to where the cube usually was rather than where it is: a sign of poor coverage. Drops during carrying. And freezes or hesitations.
+Count each type. Then look at which grid spots failed most. Compare with the awkward positions you noted while recording; they often match.
+
+## Film the evidence
+- Three successes and three failures, one of each failure type if possible
+- Keep the clips short; you will cut them into the README video
+Film three successes and three failures, ideally one of each common failure type. Short clips are fine; you will edit them into the project video later.
+Log the success rate out of twenty, and the failure counts. Tomorrow you record data designed to fix exactly these failures.
+`,
+  key: [
+    'Run the policy via LeRobot record with a checkpoint; save eval episodes.',
+    'Safety: hand on the stop, start easy, stop on hard contact.',
+    '20 trials, fixed protocol and positions; success = cube in bin.',
+    'Classify failures (missed grasp, wrong position, drop, freeze) and map them to grid spots.'
+  ],
+  quiz: [
+    ['Why use exactly the same protocol before and after retraining?', ['It is faster', 'So the before/after comparison is fair', 'LeRobot requires it', 'To save disk space'], 1, 'Only the policy should change.'],
+    ['The arm goes to where the cube usually is, not where it actually is. What does that suggest?', ['A broken servo', 'Poor coverage of positions in the dataset', 'Too much lighting', 'A wrong USB port'], 1, 'It memorised rather than generalised.']
+  ]
+});
+
+D({
+  n: 149, icon: '➕', topic: 'Robot learning', hours: 3, notion: '3f6cdfea8ce28145a477f503fdf01db0', svg: 'arm',
+  title: 'Record 50 more demos covering failures',
+  goal: 'Targeted data that fixes the failures you measured.',
+  tasks: [
+    'For each failure type, plan demos that cover it (e.g. cube near the edge, rotated cube, recovery after a miss)',
+    'Record 50 more episodes. Push the merged dataset',
+    'Start retraining',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Practice task (LeRobot)', 'Then record 50 more demonstrations covering the failure cases and retrain']],
+  links: [['LeRobot documentation', 'https://huggingface.co/docs/lerobot/index']],
+  video: `
+## Data is the fix
+@big Don't tune the network — fix the data
+When a learned policy fails, the instinct is to tweak the network or training settings. Usually, the fix is data. The policy fails where its demonstrations were thin, inconsistent, or missing.
+The article's instruction: record fifty more demonstrations covering the failure cases, then retrain. Today you design those fifty from yesterday's failure log.
+
+## Map failures to demonstrations
+| Failure from Day 8 | Targeted demonstrations |
+|---|---|
+| fails at edge spots (1, 3, 7, 9) | extra demos at the corners and edges |
+| missed grasp on rotated cube | demos with the cube rotated 20–45° |
+| drop while carrying | slower, firmer grasps; centred grip |
+| freeze after a miss | recovery demos: miss, re-approach, grasp |
+Turn each failure type into a recording plan. If edge positions failed, record extra demonstrations at the edges. If rotated cubes caused missed grasps, record rotated cubes. If the arm drops the cube, record slower, firmer, more centred grasps.
+If it freezes after a miss, record recovery demonstrations: deliberately miss slightly, then re-approach and succeed. The policy has never seen recovery unless you show it.
+
+## Keep everything else the same
+- Same cameras, positions, lighting, start pose, bin
+- Same overall strategy, so new data agrees with old
+- Proportion: roughly match failure counts — more demos where it failed most
+New data must agree with old data. Keep the cameras, lighting, start pose and bin exactly the same, and use the same strategy. Otherwise you create the averaging problem from Day 3.
+Weight the new demonstrations by the failure counts: if half the failures were edge positions, spend about half the new demos there.
+
+## Record and merge
+- Record 50 more episodes into a new dataset, or append to the existing one
+- Merge into one 100-episode dataset (LeRobot has dataset tools for this)
+- Check the merged dataset in the visualiser and push it
+Record the fifty episodes, either appending to your dataset or into a second one that you merge with the first. LeRobot includes tools for merging and editing datasets; check the docs for the current command.
+Open the merged dataset in the visualiser: one hundred episodes, both cameras, consistent frame rates. Push it to the Hub.
+
+## Retrain
+- Same policy type (ACT), same settings as last time
+- Only the data changes — a controlled experiment
+- Start it now; it runs overnight or while you work
+Start retraining with exactly the same policy type and settings as before. Only the data changes. That makes your before and after a controlled experiment: any improvement is due to the targeted data.
+Start it now, so it finishes in time for tomorrow's measurements. Log which failure cases you covered and how many demos each.
+
+## Should you keep the first 50?
+- Yes: they are good data for the common case
+- Remove only episodes you now know are bad (hesitations you missed)
+- Never delete data just because the policy failed there — that is where you need more
+A common question: should you throw away the first fifty? No. They are good demonstrations of the common case, and the new fifty build on them. Remove only episodes you now recognise as genuinely bad, like a hesitation you missed earlier.
+Never delete data because the policy failed in that area. Failure areas are exactly where you need more data, not less. Write down how many episodes you kept and removed.
+`,
+  key: [
+    'Fix failures with targeted data, not network tweaks.',
+    'Map each failure type to specific demos, including recovery demos.',
+    'Keep setup and strategy identical; weight new demos by failure counts.',
+    'Merge to 100 episodes and retrain with the same settings.'
+  ],
+  quiz: [
+    ['The policy freezes after a missed grasp. Which demos help?', ['More perfect demos', 'Recovery demos: miss slightly, re-approach, succeed', 'Faster demos', 'Demos in new lighting'], 1, 'It has never seen recovery unless shown.'],
+    ['Why retrain with exactly the same settings?', ['It is the default', 'So any improvement is due to the new data (a controlled experiment)', 'To use less GPU', 'LeRobot forbids changes'], 1, 'Change one thing at a time.']
+  ]
+});
+
+D({
+  n: 150, icon: '📈', topic: 'Robot learning', hours: 3, notion: '3f6cdfea8ce2817d81ade22f12c7cfed', svg: 'policy',
+  title: 'Retrain, re-measure, document before/after',
+  goal: 'The portfolio piece — a measured improvement.',
+  tasks: [
+    'Deploy the retrained policy. 20 trials, same protocol as Day 8',
+    'README for `month-6/so101-act/`: task, dataset links, training setup, before/after success rate, failure analysis, videos',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (LeRobot)', 'Document the success rate before and after. That number, and the fact that you measured it, is the portfolio piece'],
+    ['Month 6 Milestone (this one)', 'Record a demonstration dataset and train a policy that runs on your own hardware']
+  ],
+  links: [['LeRobot repository', 'https://github.com/huggingface/lerobot']],
+  video: `
+## The "after" number
+@eq before: x / 20 → after: y / 20 | same protocol, same positions, same success rule
+Today you deploy the retrained policy and run the same twenty-trial protocol as Day 8: same grid positions, same order, same success rule. The result is the after number.
+This is a Module 6 milestone: record a demonstration dataset and train a policy that runs on your own hardware. And it is the portfolio piece the article describes.
+
+## Compare failure by failure
+| Failure type | Before | After |
+|---|---|---|
+| missed grasp | | |
+| wrong position | | |
+| drop | | |
+| freeze | | |
+| **total successes** | **/20** | **/20** |
+Do not stop at the total. Compare each failure type before and after. Did the edge positions improve, because you added edge demos? Did recovery demos stop the freezing?
+If a failure type did not improve, that is an honest and interesting result: write down your hypothesis why. Maybe the demos were too few, or inconsistent.
+
+## Is the difference real?
+- 20 trials is small: 10/20 vs 12/20 could be chance
+- 10/20 → 16/20 is a convincing jump
+- Report the raw numbers; do not overclaim
+With twenty trials, small differences can be luck. Going from ten to twelve successes might not mean much; going from ten to sixteen almost certainly does.
+Report raw counts, like 10 out of 20 to 16 out of 20, rather than just percentages, and do not overclaim. Honesty about the uncertainty is itself a signal of engineering maturity.
+
+## The README
+\`\`\`text
+month-6/so101-act/README.md
+  [video: success + failure, 60 s]
+  Result: 10/20 → 16/20 after 50 targeted demos
+  Task · Hardware · Cameras
+  Datasets: links (first 50, merged 100)
+  Training: ACT, steps, GPU, time
+  Evaluation protocol: 20 trials, 3x3 grid, success = cube in bin
+  Failure analysis: table before/after + what the new demos targeted
+  What I would do next
+\`\`\`
+Structure the README around the result. A short video first. Then one line with the headline number. Then the task, hardware, datasets with links, training setup, the evaluation protocol, the failure analysis table, and what you would do next.
+The evaluation protocol section is what makes it credible: anyone could repeat your measurement.
+
+## Why this impresses
+- Most hobby projects show one lucky success video
+- You show a measured baseline, a diagnosis, a targeted fix, and a measured improvement
+- That is exactly the robot-learning engineer's daily loop
+Most hobby robot-learning projects show a single lucky video. Yours shows a measured baseline, a diagnosis of the failures, a targeted data fix, and a measured improvement.
+That is exactly what a robot-learning engineer does every day. Tick the practice task: this is your strongest portfolio piece so far.
+
+## Edit the video
+- 60 seconds: before failures → the targeted demos → after successes
+- Caption each clip: "before: misses edge cubes", "after: 16/20"
+- Upload, embed a GIF at the top of the README, link the full video
+Cut a sixty-second video that tells the story in order: failures from the first policy, a few seconds of the targeted recording, then successes from the retrained policy, with the numbers on screen.
+Caption every clip so it works with the sound off. Put a short GIF at the top of the README and link the full video. Share it later this module, when you post your work.
+`,
+  key: [
+    'Re-run the identical 20-trial protocol for the "after" number.',
+    'Compare failure types, not only totals; explain what did not improve.',
+    'Small samples: report raw counts and avoid overclaiming.',
+    'README: video, headline number, datasets, protocol, failure analysis.'
+  ],
+  quiz: [
+    ['Success goes from 10/20 to 11/20. What should you conclude?', ['A big improvement', 'The difference may be chance with 20 trials', 'The policy is broken', 'Retraining always helps'], 1, 'Report raw numbers honestly.'],
+    ['Which README section makes the result repeatable by others?', ['The video', 'The evaluation protocol', 'The licence', 'The title'], 1, 'Positions, trials and the success rule.']
+  ]
+});
+
+D({
+  n: 151, icon: '🗣️', topic: 'Robot learning', hours: 2.5, notion: '3f6cdfea8ce2812f9ea8fdc0028871cd', svg: 'policy',
+  title: 'Vision-language-action models: the landscape',
+  goal: 'Know which robot foundation models exist, which you can actually run, and which have open weights.',
+  tasks: [
+    'Read each VLA entry below and open its repo/page',
+    'Make a table: model → size → weights open? → licence → hardware needed → good for SO-101?',
+    'Read the RT-2 project page (no public weights, but historically important)',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['2. Vision-language-action models', 'These are the foundation models of robotics, and knowing which ones you can actually run matters\nπ₀, π₀-FAST and π₀.₅ from Physical Intelligence, Apache 2.0, weights open, pretrained on 10,000+ hours of robot data. The repo warns honestly that these were developed for their own robots and transfer is not guaranteed\nOpenVLA, 7B parameters, fully open, trained on 970,000 robot episodes from Open X-Embodiment, and the best-documented open VLA to read the code of\nGR00T N1.7 from NVIDIA, code Apache 2.0 with weights under the NVIDIA Open Model License, which is a distinction often reported wrongly. Needs 16GB+ VRAM for inference\nSmolVLA from Hugging Face, compact and designed for affordable hardware, which is the right one to fine-tune on an SO-101 rather than reaching for a 7B model\nRT-2 from Google DeepMind is historically important and has no public weights, so study the paper and use one of the above for practice'],
+    ['Month 6 Milestone (this one)', 'Name which VLA models have open weights and which do not']
+  ],
+  links: [
+    ['openpi (π₀ family)', 'https://github.com/Physical-Intelligence/openpi'],
+    ['OpenVLA', 'https://openvla.github.io/'],
+    ['Isaac GR00T', 'https://github.com/Nvidia/Isaac-GR00T'],
+    ['SmolVLA base', 'https://huggingface.co/lerobot/smolvla_base'],
+    ['RT-2 project page', 'https://robotics-transformer2.github.io/', 'extra']
+  ],
+  video: `
+## Foundation models for robots
+@eq camera images + a language instruction → robot actions | vision-language-action (VLA)
+ACT learns one task from your demonstrations. Vision-language-action models aim for something bigger: one model, pretrained on huge amounts of robot data, that takes camera images and a language instruction, like "put the cube in the bin", and outputs actions.
+The article calls them the foundation models of robotics, and stresses that knowing which ones you can actually run matters. Today is a landscape survey.
+
+## The π₀ family
+- π₀, π₀-FAST, π₀.₅ from Physical Intelligence
+- Apache 2.0, weights open
+- Pretrained on 10,000+ hours of robot data
+- Honest warning: built for their robots; transfer not guaranteed
+First, the π zero family from Physical Intelligence: pi zero, pi zero FAST and pi zero point five. Apache 2.0, with open weights, pretrained on over ten thousand hours of robot data.
+The article highlights the repo's honest warning: these were developed for their own robots, and transfer to yours is not guaranteed. Open weights do not mean plug and play.
+
+## OpenVLA and GR00T
+| Model | Openness | Notes |
+|---|---|---|
+| OpenVLA | fully open, 7B params | 970,000 episodes from Open X-Embodiment; best-documented code |
+| GR00T N1.7 | code Apache 2.0; weights NVIDIA Open Model License | needs 16 GB+ VRAM for inference |
+OpenVLA: seven billion parameters, fully open, trained on 970 thousand robot episodes from the Open X-Embodiment dataset. The article recommends it as the best-documented open VLA to read the code of.
+GR00T N1.7 from NVIDIA: the code is Apache 2.0, but the weights are under the NVIDIA Open Model License, a distinction the article says is often reported wrongly. It needs sixteen gigabytes or more of GPU memory just to run.
+
+## SmolVLA and RT-2
+- SmolVLA (Hugging Face): compact, built for affordable hardware → the one to fine-tune on an SO-101
+- RT-2 (Google DeepMind): historically important, no public weights → read the paper only
+SmolVLA from Hugging Face is compact and designed for affordable hardware. The article says it is the right one to fine-tune on an SO-101, rather than reaching for a seven billion parameter model. You do that tomorrow.
+RT-2 from Google DeepMind is historically important, showing that web-scale vision-language knowledge transfers to robot control, but it has no public weights. Study the paper; practise with the others.
+
+## Open weights: who has them?
+| Model | Weights open? |
+|---|---|
+| π₀ / π₀-FAST / π₀.₅ | yes (Apache 2.0) |
+| OpenVLA | yes |
+| GR00T N1.7 | yes, under the NVIDIA Open Model License (not Apache) |
+| SmolVLA | yes |
+| RT-2 | no |
+This table is a Module 6 milestone: name which VLA models have open weights and which do not. Pi zero family, OpenVLA and SmolVLA: yes. GR00T: yes, but under NVIDIA's own licence, not Apache. RT-2: no.
+Learn it well enough to say it in an interview without hesitating; licence details are exactly what separates careful engineers from headline readers.
+
+## Build your own table
+- Columns: model · size · weights open? · licence · hardware needed · good for SO-101?
+- Fill it from each repo or model card, not from memory
+- Add a "date checked": this field changes monthly
+Make your own table today with six columns: model, size, open weights, licence, hardware needed, and whether it suits your SO-101. Fill it from each repo or model card, not from memory or news articles.
+Add the date you checked. This field moves fast: new versions appear monthly, and licences sometimes change.
+`,
+  key: [
+    'VLAs map camera images + a language instruction to actions.',
+    'π₀ family: Apache 2.0, open weights, but transfer not guaranteed.',
+    'OpenVLA fully open (7B); GR00T code Apache, weights NVIDIA licence, 16 GB+ VRAM.',
+    'SmolVLA is the one to fine-tune on an SO-101; RT-2 has no public weights.'
+  ],
+  quiz: [
+    ['Which of these has no public weights?', ['OpenVLA', 'SmolVLA', 'RT-2', 'π₀'], 2, 'Study the RT-2 paper; practise with the others.'],
+    ['Under what licence are GR00T N1.7 weights released?', ['Apache 2.0', 'NVIDIA Open Model License', 'MIT', 'GPL'], 1, 'The code is Apache 2.0; the weights are not.']
+  ]
+});
+
+D({
+  n: 152, icon: '🧪', topic: 'Robot learning', hours: 3, notion: '3f6cdfea8ce2812aa9b8e4a60cba08da', svg: 'policy',
+  title: 'Fine-tune SmolVLA on your dataset',
+  goal: 'Fine-tune a small VLA on your own 100 episodes.',
+  tasks: [
+    'Follow the LeRobot SmolVLA fine-tuning instructions with your merged dataset and a language instruction ("pick the cube and put it in the bin")',
+    'Run training on a GPU (this needs more memory than ACT — use a bigger cloud GPU if needed)',
+    'If no GPU budget: skip training, write what you would do, and mark the day Skipped honestly',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['SmolVLA', 'SmolVLA from Hugging Face, compact and designed for affordable hardware, which is the right one to fine-tune on an SO-101 rather than reaching for a 7B model']],
+  links: [
+    ['SmolVLA base model', 'https://huggingface.co/lerobot/smolvla_base'],
+    ['LeRobot documentation', 'https://huggingface.co/docs/lerobot/index']
+  ],
+  video: `
+## Pretraining, then fine-tuning
+@eq pretrained on many robots and tasks → fine-tuned on your 100 episodes → your task
+ACT started from scratch on your data. SmolVLA starts from a model already pretrained on many robot datasets, then you fine-tune it on your hundred episodes. That is the same recipe as fine-tuning a language model.
+The hope is that general knowledge from pretraining helps it generalise better from your limited data: new positions, maybe new objects.
+
+## Why SmolVLA, not a 7B model
+- Compact: fine-tunes on a single rented GPU in hours
+- Built with LeRobot, for SO-100/SO-101-class robots
+- A 7B model needs far more memory and money for the same task
+The article is clear: SmolVLA is the right one to fine-tune on an SO-101, rather than reaching for a seven billion parameter model. It is compact enough to fine-tune on one rented GPU in hours.
+It was built by the LeRobot team, and its pretraining data includes community datasets from arms like yours. Bigger is not better when it does not fit your budget.
+
+## The fine-tune command
+\`\`\`bash
+lerobot-train \\
+  --policy.path=lerobot/smolvla_base \\
+  --dataset.repo_id=YOUR_HF_USER/so101_cube_bin_merged \\
+  --batch_size=64 --steps=20000 \\
+  --output_dir=outputs/train/smolvla_so101_cube \\
+  --job_name=smolvla_so101_cube \\
+  --policy.device=cuda --wandb.enable=true
+\`\`\`
+The command looks like ACT's, with one difference: instead of a policy type, you give a policy path, the pretrained SmolVLA base model on the Hub. Your dataset's task description becomes the language instruction.
+Follow the current LeRobot SmolVLA instructions for the exact flags and recommended steps; they evolve.
+
+## GPU and budget
+| Option | Notes |
+|---|---|
+| Colab free | may be too small or time out |
+| Colab Pro / cloud GPU (A100, L4, etc.) | comfortable; a few hours |
+| no budget | skip honestly: write the plan, mark Skipped |
+SmolVLA needs more GPU memory than ACT. Free Colab may be too small or disconnect. A rented cloud GPU for a few hours is usually enough and costs little.
+If you have no GPU budget, the plan says to skip training honestly: write exactly what you would do, mark the day Skipped, and move on. An honest Skipped beats a faked result.
+
+## While it trains
+- Watch the loss: it should start lower than ACT's, thanks to pretraining
+- Save checkpoints to the Hub
+- Prepare tomorrow's comparison: same 20-trial protocol, plus a generalisation test
+While it trains, watch the loss. Starting from pretrained weights, it typically begins lower and converges faster than training from scratch. Save checkpoints to the Hub so a disconnect does not lose them.
+Prepare tomorrow's comparison: the same twenty-trial protocol you used for ACT, plus one generalisation test, a new object colour or a new position. Log the GPU and training time.
+`,
+  key: [
+    'SmolVLA: pretrained on many robots, fine-tuned on your 100 episodes.',
+    'Compact enough for one rented GPU — the right choice for an SO-101.',
+    'Fine-tune with --policy.path=lerobot/smolvla_base; the task text is the instruction.',
+    'No GPU budget? Skip honestly and write the plan.'
+  ],
+  quiz: [
+    ['How does fine-tuning SmolVLA differ from training ACT here?', ['It uses no data', 'It starts from a pretrained model instead of from scratch', 'It needs no GPU', 'It ignores cameras'], 1, 'Pretraining, then fine-tuning.'],
+    ['Why fine-tune SmolVLA rather than a 7B VLA on an SO-101?', ['SmolVLA is newer', 'It is compact and affordable to fine-tune; 7B needs far more resources', '7B models cannot control arms', 'SmolVLA has no licence'], 1, 'Fit the model to your hardware and budget.']
+  ]
+});
+
+D({
+  n: 153, icon: '⚖️', topic: 'Robot learning', hours: 2.5, notion: '3f6cdfea8ce281b5a48dd3ce1699ec02', svg: 'policy',
+  title: 'Evaluate SmolVLA vs ACT',
+  goal: 'A fair comparison of two policies on the same task.',
+  tasks: [
+    'Run SmolVLA: 20 trials, same protocol as ACT',
+    'Add a column to your README table: ACT before / ACT after / SmolVLA',
+    'Try one generalisation test: a new object colour or a new start position. Which policy copes better?',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Direction 1', 'This is the highest-paid track and also the most competitive, and it is where a real dataset you collected yourself is worth more than any credential']],
+  links: [['LeRobot repository', 'https://github.com/huggingface/lerobot']],
+  video: `
+## A fair fight
+| | ACT before | ACT after | SmolVLA |
+|---|---|---|---|
+| data | 50 eps | 100 eps | 100 eps (+ pretraining) |
+| successes / 20 | | | |
+| new-colour test / 5 | | | |
+Today you run SmolVLA through exactly the same twenty-trial protocol as ACT, and add it as a third column in your results table: ACT before, ACT after, SmolVLA.
+Same positions, same order, same success rule, same cameras and lighting. Only then can you say anything about which policy is better.
+
+## Run the twenty trials
+- Same command as ACT, pointing at the SmolVLA checkpoint
+- Same safety rules: hand on the stop
+- Note the speed: VLA inference is slower; does the arm move differently?
+Run SmolVLA with the same record command, pointing at its checkpoint. Keep a hand on the stop, as always.
+Note the behaviour, not just success: VLA inference is slower than ACT, so motion may be more halting or less smooth. Classify failures with the same categories as before.
+
+## The generalisation test
+- Swap the cube for a different colour, or start it outside the training area
+- 5 trials each policy
+- Which copes better — and does pretraining seem to help?
+Then a generalisation test: something neither policy saw in your data. A different-coloured cube, or a start position just outside the taped area. Five trials for each policy.
+This is where pretraining is supposed to help: SmolVLA has seen many objects and scenes. Does it cope better than ACT? Whatever the answer, it is an interesting result.
+
+## Interpreting honestly
+- SmolVLA might win, lose or tie — all are fine results
+- Small samples: avoid strong claims from 1–2 trial differences
+- Explain why, with evidence from failure types and videos
+Do not assume the bigger model wins. On a narrow task with good data, ACT is often as good or better, and faster. SmolVLA may shine only on the generalisation test, or not at all.
+All outcomes are fine, as long as you report them honestly and explain them with evidence from failure types and videos. Small samples mean modest claims.
+
+## Why this matters for your career
+@big A real dataset you collected yourself is worth more than any credential
+The article on the robot-learning direction: it is the highest-paid track and the most competitive, and it is where a real dataset you collected yourself is worth more than any credential.
+You now have exactly that: your own dataset on the Hub, a measured improvement from targeted data, and a comparison of two policy families. Update the README table and log both results.
+`,
+  key: [
+    'Same 20-trial protocol for SmolVLA; add it as a third results column.',
+    'Add a generalisation test: a new colour or position, 5 trials each.',
+    'The bigger model does not automatically win; report honestly.',
+    'Your own dataset beats any credential on the robot-learning track.'
+  ],
+  quiz: [
+    ['Where is pretraining most likely to help SmolVLA over ACT?', ['On the exact training positions', 'On generalisation tests like a new object colour', 'In inference speed', 'In recording'], 1, 'It has seen many objects and scenes.'],
+    ['ACT beats SmolVLA on your task. What do you report?', ['Hide it', 'The numbers honestly, with an explanation', 'Retrain until SmolVLA wins', 'Only the SmolVLA videos'], 1, 'Every honest result is a good result.']
+  ]
+});
+
+D({
+  n: 154, icon: '🔁', topic: 'Review', hours: 2, notion: '3f6cdfea8ce281cba247f0bd6ae89ad2', svg: 'policy',
+  title: 'Week 2 review + catch-up',
+  goal: 'Finish the robot-learning project write-up.',
+  tasks: [
+    'Finish unfinished tasks from M6 Days 8–13',
+    'Make sure the `month-6/so101-act/` README has video, numbers and a failure analysis',
+    'Update Confidence on Days 8–13'
+  ],
+  links: [['LeRobot documentation', 'https://huggingface.co/docs/lerobot/index']],
+  video: `
+## The README checklist
+- A 60-second video at the top: successes and failures
+- Headline: ACT 10/20 → 16/20 after targeted demos; SmolVLA x/20
+- Datasets linked; training setup; evaluation protocol
+- Failure analysis table; generalisation test; what next
+Review day: finish the robot-learning write-up, your strongest portfolio piece. Check the README against this list: a short video at the top, the headline numbers, linked datasets, the training setup, the evaluation protocol, the failure analysis, the generalisation test, and what you would do next.
+Anything missing, add today.
+
+## The week in one table
+| Idea | One line |
+|---|---|
+| deploy and measure | 20 trials, fixed protocol, classify failures |
+| targeted data | record demos for each failure type, incl. recovery |
+| before/after | same settings, only data changes; raw counts |
+| VLAs | images + language → actions; know which have open weights |
+| SmolVLA | compact VLA to fine-tune on an SO-101 |
+| fair comparison | same protocol; honest, modest claims |
+Here is the week compressed: deploying and measuring, targeted data, controlled before and after, the VLA landscape, fine-tuning SmolVLA, and fair comparison.
+The common thread is measurement. Every claim in your README should trace back to a trial you ran.
+
+## Say it in two minutes
+- What the task was and how you collected data
+- The before number, the failure analysis, the targeted fix, the after number
+- ACT versus SmolVLA, and what you would try next
+Practise telling the project story out loud in two minutes: the task and data collection, the before number, what failed and why, the targeted fix, the after number, then the ACT versus SmolVLA comparison and your next step.
+That story is your answer to "tell me about a project you are proud of". Record it once and listen back.
+
+## Next section
+@svg rl | reinforcement learning, then your capstone plan
+Next section switches from imitation to reinforcement learning: the foundations from Berkeley's CS 285, training a quadruped in MuJoCo Playground, changing the reward and watching the gait change, and an overview of Isaac Lab.
+Then you pick your direction and plan your capstone. Update your Confidence ratings.
+`,
+  key: [
+    'README: video, numbers, datasets, protocol, failure analysis, next steps.',
+    'Every claim traces back to a measured trial.',
+    'Practise the two-minute project story.',
+    'Next: reinforcement learning and the capstone plan.'
+  ],
+  quiz: [
+    ['What ties this week\'s work together?', ['Bigger models', 'Measurement: every claim traces back to trials', 'More cameras', 'Faster GPUs'], 1, 'Measure, diagnose, fix, re-measure.'],
+    ['What is the best answer to "tell me about a project you are proud of"?', ['A list of tools used', 'A short story: task, before number, diagnosis, fix, after number', 'Your course certificate', 'The training loss'], 1, 'Numbers and reasoning.']
+  ]
+});
 // @@END

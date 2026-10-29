@@ -1541,4 +1541,512 @@ The hardware is a desk lamp for consistent lighting, which, after Day 19, you kn
     ['Why is a desk lamp on the Month 6 gear list?', ['To read at night', 'Consistent lighting, because vision and policies break when lighting changes', 'To heat servos', 'Calibration requires it'], 1, 'You saw this on Day 19.']
   ]
 });
+
+// ───────────── Section 4 · MoveIt 2 and manipulation ─────────────
+D({
+  n: 134, icon: '🦿', topic: 'Manipulation', hours: 3, notion: '3f6cdfea8ce281b8a908c36382d89e0d', svg: 'arm',
+  title: 'MoveIt 2 getting started · ORDER Month 6 gear',
+  goal: 'MoveIt 2 planning motions for a simulated arm, and Month 6 resources ready.',
+  order: 'Order / set up Module 6 today. On the Gear tab, Module 6: GPU access for training (Google Colab or a cloud GPU), a Hugging Face account, a second USB camera for LeRobot recording, and good desk lighting. Set each item\'s Status.',
+  tasks: [
+    'Order / set up Month 6 (see the order note)',
+    'Install MoveIt 2 for Jazzy. Run the Getting Started tutorial and the RViz MotionPlanning plugin demo',
+    'Plan and execute a few goal poses by dragging the interactive marker',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['MoveIt 2 Getting Started', 'The official entry point, and the docs recommend Jazzy on Ubuntu 24.04 for the smoothest experience']],
+  links: [['MoveIt 2 Getting Started', 'https://moveit.picknik.ai/main/doc/tutorials/getting_started/getting_started.html']],
+  video: `
+## The last section of Module 5
+@svg arm | IK + collision checking + planning = MoveIt
+Final section of Module 5: manipulation with MoveIt 2. Everything from the last three weeks lives inside it: forward and inverse kinematics, Jacobians, transforms, and a model of the world to avoid.
+MoveIt is the standard motion-planning framework for ROS arms. Today you install it and plan motions by dragging a target around in RViz.
+
+## Set up Module 6 first
+- GPU access for training: Google Colab or a cloud GPU
+- A Hugging Face account: datasets and models live on the Hub
+- A second USB camera and mount; good, consistent desk lighting
+First, the Module 6 setup. Module 6 is robot learning, so you need GPU access for training: Colab works, or a rented cloud GPU. Create a Hugging Face account, where LeRobot stores datasets and trained policies.
+Hardware is light: a second camera for a wrist or side view, which makes recorded demonstrations much better, and a lamp for consistent lighting. Set each item's status on the Gear tab.
+
+## Install and run the demo
+\`\`\`bash
+sudo apt install ros-jazzy-moveit
+# follow Getting Started: build the tutorials workspace, then
+ros2 launch moveit2_tutorials demo.launch.py
+\`\`\`
+Install MoveIt for Jazzy; the docs recommend Jazzy on Ubuntu 24.04 for the smoothest experience, which is exactly your setup. The Getting Started tutorial builds a tutorials workspace and launches a demo with a Panda arm in RViz.
+The first build takes a while. Start it, then read on while it compiles.
+
+## The MotionPlanning plugin
+- Drag the interactive marker: a goal pose for the gripper
+- Orange ghost = goal state, solved by IK
+- Plan → a trajectory preview · Execute → the arm moves
+In RViz, the MotionPlanning panel shows the arm with an interactive marker at the gripper. Drag and rotate it: MoveIt solves IK continuously and shows the goal configuration as an orange ghost arm.
+Click Plan, and MoveIt searches for a collision-free path and animates it. Click Execute, and the simulated arm follows. Try several goals, including awkward ones near the arm's limits.
+
+## What MoveIt is made of
+| Piece | Job |
+|---|---|
+| move_group | the central node: coordinates everything |
+| kinematics plugin | IK, like your solver, but faster and robust |
+| planning scene | the robot plus every obstacle |
+| planners (OMPL, Pilz, STOMP) | search for collision-free paths |
+| trajectory execution | sends the path to ros2_control controllers |
+Like Nav2, MoveIt is a set of components. Move group is the central node. A kinematics plugin solves IK. The planning scene holds the robot and everything around it. Planners, OMPL by default, search for collision-free paths.
+Trajectory execution sends the result to ros2 control: a joint trajectory controller, the arm version of the diff drive controller you configured in Module 4.
+
+## Sampling-based planning
+@eq sample random configurations → keep collision-free ones → connect them → path | OMPL's RRTConnect
+OMPL planners like RRT Connect are sampling-based. They try random arm configurations, keep the ones that do not collide, and connect them into a tree until start and goal are linked. Then they smooth the path.
+Because it is random, the same goal can give different paths each time, and a plan can occasionally fail where a retry succeeds. Plan the same goal several times today and watch the paths differ.
+`,
+  key: [
+    'MoveIt combines IK, collision checking and planning for arms.',
+    'Set up Module 6: GPU access, Hugging Face, second camera, lighting.',
+    'RViz MotionPlanning: drag the marker, Plan, Execute.',
+    'OMPL planners sample random configurations; paths vary between runs.'
+  ],
+  quiz: [
+    ['Which MoveIt component holds the robot and all obstacles?', ['move_group', 'The planning scene', 'OMPL', 'The kinematics plugin'], 1, 'Planners check collisions against it.'],
+    ['Why can the same MoveIt goal produce different paths?', ['A bug', 'OMPL planners are sampling-based (random)', 'The robot moves', 'IK is disabled'], 1, 'Random sampling finds different solutions.']
+  ]
+});
+
+D({
+  n: 135, icon: '🧱', topic: 'Manipulation', hours: 2.5, notion: '3f6cdfea8ce2818a88dcf179303df29b', svg: 'arm',
+  title: 'Planning scene + collision objects',
+  goal: 'Plan around obstacles from your own code.',
+  tasks: [
+    'MoveIt tutorials: MoveGroup / MoveItPy (or C++ API) — plan to a pose from code',
+    'Add a table and a box as collision objects to the planning scene. Plan around them',
+    "Read Tedrake's Robotic Manipulation intro chapter",
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Robotic Manipulation, Russ Tedrake', 'Twelve chapters connecting hardware, kinematics, perception, grasping, planning and control into one coherent stack, and it now teaches model-based and learned approaches together, which is exactly how the industry now works']],
+  links: [
+    ['MoveIt 2 Getting Started', 'https://moveit.picknik.ai/main/doc/tutorials/getting_started/getting_started.html'],
+    ['Robotic Manipulation, Russ Tedrake, MIT', 'https://manipulation.csail.mit.edu/']
+  ],
+  video: `
+## From clicking to code
+@big Real systems plan from code, not from RViz
+Yesterday you planned by dragging a marker. Real systems plan from code: perception finds an object, code computes a goal pose, and MoveIt plans to it. Today you do that, and teach MoveIt about obstacles.
+Use the MoveGroup interface in C++, or MoveItPy in Python. The tutorials cover both; pick the language you are faster in.
+
+## Plan to a pose from code
+\`\`\`python
+from moveit.planning import MoveItPy
+from geometry_msgs.msg import PoseStamped
+
+moveit = MoveItPy(node_name="planner")
+arm = moveit.get_planning_component("panda_arm")
+goal = PoseStamped(); goal.header.frame_id = "panda_link0"
+goal.pose.position.x, goal.pose.position.y, goal.pose.position.z = 0.4, 0.1, 0.4
+goal.pose.orientation.w = 1.0
+arm.set_start_state_to_current_state()
+arm.set_goal_state(pose_stamped_msg=goal, pose_link="panda_link8")
+plan = arm.plan()
+if plan:
+    moveit.execute(plan.trajectory, controllers=[])
+\`\`\`
+The pattern is always the same. Get a planning component for the arm group. Set the start state to the current state. Set a goal, here a pose for the gripper link in the base frame. Plan, and if it succeeds, execute.
+Notice the frame ID on the goal: the pose is expressed in the base frame, a homogeneous transform exactly like last week's.
+
+## Collision objects
+\`\`\`python
+from moveit_msgs.msg import CollisionObject
+from shape_msgs.msg import SolidPrimitive
+
+table = CollisionObject(); table.id = "table"
+table.header.frame_id = "panda_link0"
+box = SolidPrimitive(type=SolidPrimitive.BOX, dimensions=[0.8, 1.2, 0.05])
+table.primitives.append(box)
+table.primitive_poses.append(pose(0.5, 0.0, -0.03))
+table.operation = CollisionObject.ADD
+with moveit.get_planning_scene_monitor().read_write() as scene:
+    scene.apply_collision_object(table)
+\`\`\`
+MoveIt only avoids what it knows about. Add obstacles to the planning scene as collision objects: a shape, a size, a pose and an ID. Boxes, cylinders and spheres cover most cases; meshes are possible too.
+Add a table under the arm and a box in the middle of the workspace. They appear green in RViz.
+
+## Plan around them
+- Goal on the far side of the box → the path goes over or around it
+- Goal inside the box → planning fails (goal in collision)
+- Move the box, re-plan: the path changes
+Now plan to a goal on the far side of the box: the arm should lift over or swing around it. Plan to a goal inside the box: planning fails immediately, because the goal itself is in collision.
+Move the box and plan again. This is the loop every pick-and-place system runs: perceive, update the scene, plan.
+
+## Where the scene comes from
+| Source | Example |
+|---|---|
+| known geometry | the table, walls, fixtures — added in code |
+| perception | your Day 20 point-cloud boxes → collision objects |
+| octomap | a depth camera's raw points as voxels |
+In a real system, the scene comes from somewhere. Fixed things like tables are added in code. Objects come from perception: the bounding boxes from your Day 20 point-cloud pipeline map directly to collision objects.
+MoveIt can also take raw depth data as an octomap, a voxel grid of occupied space. That closes the loop between vision and manipulation.
+
+## Tedrake's Robotic Manipulation
+- Twelve chapters: hardware, kinematics, perception, grasping, planning, control
+- Model-based and learned approaches, together
+- Read the intro chapter today
+Read the intro chapter of Russ Tedrake's Robotic Manipulation, free online. The article praises it for connecting hardware, kinematics, perception, grasping, planning and control into one coherent stack.
+It teaches model-based and learned approaches together, which the article notes is exactly how the industry now works. It is also the perfect bridge to Module 6.
+`,
+  key: [
+    'Plan from code: start state → goal pose (in a frame) → plan → execute.',
+    'MoveIt only avoids what is in the planning scene; add collision objects.',
+    'A goal in collision fails immediately; moving obstacles changes the path.',
+    'Scene sources: known geometry, perception boxes, octomaps.'
+  ],
+  quiz: [
+    ['MoveIt plans straight through a real box on the table. Why?', ['OMPL is broken', 'The box was never added to the planning scene', 'The arm is too short', 'The goal frame is wrong'], 1, 'MoveIt only avoids what it knows about.'],
+    ['What happens if the goal pose is inside a collision object?', ['The arm pushes it away', 'Planning fails because the goal is in collision', 'MoveIt ignores the object', 'It plans more slowly'], 1, 'An invalid goal cannot be reached.']
+  ]
+});
+
+D({
+  n: 136, icon: '🤏', topic: 'Manipulation', hours: 3, notion: '3f6cdfea8ce2810d84d5c839c7b7885f', svg: 'arm',
+  title: 'Pick and place with MoveIt Task Constructor',
+  goal: 'A collision-free pick and place in simulation, built from stages.',
+  tasks: [
+    'Follow the MoveIt Task Constructor pick-and-place tutorial end to end',
+    'Understand each stage: current state → open hand → move to pick → approach → grasp → lift → move to place → release → retreat',
+    'Change the object position and the place position. Re-run',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Pick and Place with MoveIt Task Constructor', 'The most useful manipulation tutorial in ROS 2, teaching how to decompose a task into stages and implement grasp generation, IK and collision management'],
+    ['Month 5 Milestone (this one)', 'Plan and execute a collision-free pick and place in MoveIt 2']
+  ],
+  links: [['Pick and Place with MoveIt Task Constructor', 'https://moveit.picknik.ai/main/doc/tutorials/pick_and_place_with_moveit_task_constructor/pick_and_place_with_moveit_task_constructor.html']],
+  video: `
+## Why pick and place is hard
+@big One task, many motions, each with its own constraints
+Picking something up looks simple, but it is a chain of motions with different rules. Moving freely to the object, approaching it in a straight line, closing the gripper, lifting without dragging, carrying, placing, letting go, and backing away.
+Each step must be collision-free, and each must connect to the next. Planning them one at a time often paints you into a corner. MoveIt Task Constructor plans them together.
+
+## The stages
+1. Current state → open hand
+2. Move to pick (free motion) → approach (straight line)
+3. Generate grasp → close hand, attach object → lift (straight up)
+4. Move to place (free motion) → lower → open hand, detach → retreat
+The tutorial decomposes the task into stages: open the hand, move to the pick area, approach in a straight line, generate a grasp pose, close the hand and attach the object to the gripper, lift, move to the place area, lower, release, and retreat.
+The article calls this the most useful manipulation tutorial in ROS 2, because it teaches exactly this skill: decomposing a task into stages.
+
+## Two kinds of motion
+| Stage type | Planner | Why |
+|---|---|---|
+| move to pick / place | sampling (OMPL) | free space, any path is fine |
+| approach / lift / retreat | Cartesian straight line | the path itself matters |
+Notice the two kinds of motion, which is Day 16's lesson in action. Big moves through free space use a sampling planner: any collision-free path will do. Approach, lift and retreat use straight Cartesian lines, because the path matters: you must come down onto the object, not swipe at it sideways.
+Task Constructor lets you choose the planner per stage.
+
+## Attaching the object
+- Grasp: allow gripper-object contact, then attach the object to the gripper
+- While carried, the object moves with the hand and is collision-checked
+- Release: detach it back into the scene
+A subtle but crucial step: attaching the object. When the gripper closes, the object stops being an obstacle and becomes part of the robot. MoveIt allows contact between the fingers and the object, and from then on checks the carried object for collisions too.
+When you release, the object is detached and becomes part of the scene again, at its new position.
+
+## Why plan all stages together
+@eq search over grasp candidates × IK solutions × connecting paths | pick the best complete solution
+The power of Task Constructor: it searches over all stages together. There may be many grasp poses and many IK solutions for each. A grasp that looks fine for picking may make placing impossible.
+By considering the whole chain, it finds a complete solution that works end to end, and the RViz panel lets you inspect every stage and every candidate, including the failed ones.
+
+## Make it yours
+- Move the object; move the place location; re-run
+- Use the introspection panel: which stages produced how many solutions?
+- Record a video of a full pick and place
+Follow the tutorial end to end, then change the object's position and the place position and run it again. Open the Task Constructor panel in RViz and look at how many solutions each stage produced.
+Record a short video of a full successful pick and place: that ticks the milestone item, plan and execute a collision-free pick and place in MoveIt 2. Tomorrow you make it fail.
+`,
+  key: [
+    'Pick and place = a chain of stages with different constraints.',
+    'Free moves use sampling planners; approach/lift/retreat use straight lines.',
+    'Grasping attaches the object to the gripper so it is collision-checked while carried.',
+    'Task Constructor plans all stages together and lets you inspect each.'
+  ],
+  quiz: [
+    ['Why use a Cartesian straight line for the approach stage?', ['It is faster to compute', 'The gripper must come straight onto the object, not swipe sideways', 'OMPL cannot plan approaches', 'It avoids IK'], 1, 'The path itself matters.'],
+    ['Why attach the object to the gripper after grasping?', ['To make it lighter', 'So it moves with the hand and is collision-checked while carried', 'To delete it', 'To speed up planning'], 1, 'It becomes part of the robot.']
+  ]
+});
+
+D({
+  n: 137, icon: '💥', topic: 'Manipulation', hours: 2.5, notion: '3f6cdfea8ce281a8a3b6dae3deee1f40', svg: 'arm',
+  title: 'Make the planner fail on purpose + grasping',
+  goal: 'Understand planner failure, and see how learned grasping fits in.',
+  tasks: [
+    'Block the only viable path with an obstacle. Observe: timeout, which stage fails, what the logs say',
+    'Try a different planner or a longer planning time. Note what changes',
+    "Read Tedrake's grasping chapter. Skim the Contact-GraspNet README (what input, what output)",
+    'Push `month-5/moveit-pick-place/` with a video of success and of failure',
+    'Tick Practice task done. Fill the log, Status, Hours, Confidence'
+  ],
+  read: [
+    ['Practice task (MoveIt)', 'Practice task: get MoveIt 2 planning motions for a simulated arm, add collision objects to the planning scene, and execute a pick and place. Then make it fail by placing an obstacle in the only viable path and observe how the planner behaves. Understanding planner failure is more valuable than watching it succeed'],
+    ['Contact-GraspNet', 'Six-DOF grasp generation in cluttered scenes from a depth map, and the standard baseline for learned grasping']
+  ],
+  links: [
+    ['Robotic Manipulation, Russ Tedrake', 'https://manipulation.csail.mit.edu/'],
+    ['Contact-GraspNet, NVIDIA', 'https://github.com/NVlabs/contact_graspnet']
+  ],
+  video: `
+## Failure is the lesson
+@big Understanding planner failure is more valuable than watching it succeed
+The article is explicit: understanding planner failure is more valuable than watching it succeed. Today you break your pick and place on purpose and study how it fails.
+In real deployments, planners fail all the time: a cluttered shelf, an unreachable object, a tight gap. Engineers who can read those failures are the ones who fix robots.
+
+## Block the only path
+- Place a tall wall between pick and place, or box the object in
+- Run the task again
+- Observe: does it time out? which stage fails? what do the logs say?
+Place an obstacle that blocks the only viable path: a tall wall between the pick and place areas, or boxes around the object so no approach direction is free. Run the task again.
+Watch closely. Does planning time out, or fail instantly? Which stage fails in the Task Constructor panel? What exactly do the terminal logs say? Write it all down.
+
+## Reading the failure
+| What you see | What it means |
+|---|---|
+| fails instantly | goal or start in collision, or IK has no solution |
+| times out | the planner searched and found no path in time |
+| approach stage: 0 solutions | no straight-line approach is free |
+| connect stage fails | pick and place each work, but cannot be joined |
+Different failures mean different things. An instant failure usually means the goal or start is in collision, or IK found no solution at all. A timeout means the planner searched and gave up: maybe impossible, maybe just hard.
+Task Constructor tells you which stage failed. Zero approach solutions means no straight approach is clear. A failed connect stage means picking and placing each work, but no path joins them.
+
+## Impossible or just hard?
+- Longer planning time: does it eventually succeed?
+- Different planner (e.g. RRTstar, PRM, or Pilz for straight lines)
+- If nothing works: probably truly blocked
+Sampling planners cannot prove a path does not exist; they just fail to find one in time. So try a longer planning time, and a different planner. If one succeeds, the problem was hard, not impossible.
+If nothing works, the path is probably truly blocked. Note what changed with each attempt. This is the reasoning you will use on every real manipulation bug.
+
+## Where grasps come from
+- In the tutorial: grasp poses generated around a known object shape
+- Real world: unknown objects, clutter, only a depth image
+- Contact-GraspNet: depth map in → many 6-DOF grasp poses + scores out
+In the tutorial, grasps are generated around a known simple shape. Real objects are unknown and cluttered, and all you have is a depth image. That is where learned grasping comes in.
+Contact-GraspNet, from NVIDIA, takes a depth map and outputs many six-degree-of-freedom grasp poses with confidence scores. The article calls it the standard baseline for learned grasping. Skim its README: note the input and the output.
+
+## Model-based meets learned
+@eq learned grasp poses → MoveIt plans + collision checks → execute
+Here is how the pieces fit, and the idea Tedrake's book is built on. A learned model proposes grasps. A model-based planner like MoveIt checks reachability and collisions, and plans the motion. Each covers the other's weakness.
+Read Tedrake's grasping chapter, then push your pick-and-place repo with two videos: one success, one failure, with your explanation of the failure. Tick the practice task.
+`,
+  key: [
+    'Understanding planner failure is worth more than watching success.',
+    'Instant failure: collision or no IK; timeout: no path found in time.',
+    'Sampling planners cannot prove impossibility; try more time or another planner.',
+    'Learned grasping (Contact-GraspNet) proposes grasps; MoveIt plans and checks them.'
+  ],
+  quiz: [
+    ['Planning fails instantly instead of timing out. Most likely cause?', ['The planner needs more time', 'Goal or start in collision, or no IK solution', 'Too many CPU cores', 'The video recorder'], 1, 'Instant failures are usually invalid states.'],
+    ['What does Contact-GraspNet take as input?', ['A URDF', 'A depth map', 'Joint angles', 'A behaviour tree'], 1, 'It outputs scored 6-DOF grasp poses.']
+  ]
+});
+
+D({
+  n: 138, icon: '📝', topic: 'Portfolio & career', hours: 2.5, notion: '3f6cdfea8ce2819f9e86e173510e951a', svg: 'pid',
+  title: 'Write-ups: control, kinematics, vision, MoveIt',
+  goal: 'Month 5 READMEs that show numbers, plots and failures.',
+  tasks: [
+    'Polish each Month 5 README: controller comparison plot, LQR vs PID plot, FK/IK table, vision failure-and-fix, MoveIt videos',
+    'Each has a "what broke and how I fixed it" section',
+    'Link them from `month-5/README.md`',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Reminder', 'That plot is worth more in an interview than any certificate']],
+  links: [['The Fundamentals of Control Theory, Brian Douglas', 'https://engineeringmedia.com/books']],
+  video: `
+## Five projects, one month
+| Project | The headline artefact |
+|---|---|
+| controller-comparison | P vs PD vs PID+FF plot + metrics table |
+| cartpole-lqr | LQR vs PID after a push |
+| so101-kinematics | hand vs toolbox vs real table; the singularity |
+| vision-3d | distance table; the lighting failure-and-fix |
+| moveit-pick-place | videos of success and of failure |
+Today is a write-up day. In one month you produced five projects, each with a headline artefact: a plot, a table, or a video. The article's reminder: that plot is worth more in an interview than any certificate.
+Your job today is to make each README show that artefact first, so a reviewer gets the point in ten seconds.
+
+## The README template
+1. One sentence: what it is and what it shows
+2. The headline plot, table or video
+3. How it works: a short diagram or paragraph
+4. Results with numbers
+5. What broke and how I fixed it
+6. How to run it
+Use the same structure for all five. One sentence, then the headline artefact, a short explanation, results with numbers, what broke, and how to run it. Consistency across repos makes you look organised, which you are.
+Keep each README to one screen if you can. Link to details rather than including everything.
+
+## What broke, every time
+- Controller: noise when D was too high? windup at saturation?
+- LQR: a sign error in the model? the failure angle?
+- Kinematics: zero-offset mismatch? the singularity spike?
+- Vision: the lighting failure; MoveIt: the blocked path
+Every README needs a what-broke section. You already have the material in your daily logs: the noisy derivative, the sign error, the zero offset, the lighting failure, the blocked planner.
+This section is what interviewers ask about. "Tell me about a time something did not work" has five good answers now.
+
+## Numbers beat adjectives
+@big "Settling time fell from 1.4 s to 0.6 s" beats "much better"
+Go through each README and replace adjectives with numbers. Not "PD was much better", but "overshoot fell from 38 to 12 percent". Not "accurate", but "within 7 millimetres at 50 centimetres".
+Numbers show you measured, and measuring is what engineers do.
+
+## The month index
+\`\`\`text
+month-5/README.md
+  Control:      controller-comparison · cartpole-lqr
+  Kinematics:   so101-kinematics
+  Vision:       vision-3d
+  Manipulation: moveit-pick-place
+  (one line + one thumbnail each)
+\`\`\`
+Finally, a month index: one README linking all five projects, grouped by topic, each with one line and a thumbnail. Link it from your top-level repo README.
+Tomorrow is the milestone test, where you show each item. These write-ups are your evidence.
+
+## Make the plots readable
+- Axis labels with units: "time [s]", "angle [deg]"
+- One colour per controller, a legend, a dashed target line
+- Export at a readable size (PNG, ~1200 px wide); no screenshots of notebooks
+A plot is only worth something if a stranger can read it. Every axis needs a label with units. Every line needs a legend entry. The target goes in as a dashed line. Export a clean PNG at a decent size, rather than a blurry screenshot of a notebook.
+Spend ten minutes on each headline plot. It is the first thing anyone sees, so it is the best-spent ten minutes of the day.
+
+## A short video beats a long paragraph
+- Under one minute; show the result, then one failure
+- Add captions instead of narration
+- Put a GIF at the top of the README, link the full video
+For the MoveIt and vision projects, a short clip says more than any paragraph. Keep it under a minute: the success first, then one failure, with captions explaining what you see.
+Convert the first few seconds to a GIF and put it at the top of the README, linking to the full video. Reviewers scroll fast; a moving image makes them stop.
+`,
+  key: [
+    'Five Module 5 projects, each with a headline plot, table or video.',
+    'README: one sentence → artefact → how → numbers → what broke → how to run.',
+    'Replace adjectives with measured numbers.',
+    'A month index links all projects by topic.'
+  ],
+  quiz: [
+    ['What should a reviewer see first in each README?', ['The licence', 'The headline plot, table or video', 'Installation steps', 'A long introduction'], 1, 'Make the point in ten seconds.'],
+    ['Which is the stronger README sentence?', ['"PD was much better"', '"Overshoot fell from 38% to 12% with PD"', '"It worked well"', '"Great results"'], 1, 'Numbers beat adjectives.']
+  ]
+});
+
+D({
+  n: 139, icon: '🧪', topic: 'Milestone', hours: 2.5, notion: '3f6cdfea8ce28100aef6eaf9ab2b752e', svg: 'arm',
+  title: 'Month 5 milestone test',
+  goal: 'Prove every Month 5 milestone item.',
+  tasks: [
+    'Go through each milestone item. Show it or explain it out loud (record if alone)',
+    'Point at your SO-101 in a singular pose and explain it in one minute',
+    'Fix any failing item',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Month 5 Milestone', 'By the end of this month you should be able to:\nImplement and tune a PID controller and explain every term from measured data\nDescribe a system in state space and implement LQR on a simulated plant\nCompute forward kinematics by hand and solve IK numerically\nExplain what a singularity is by pointing at a robot doing it\nCalibrate a camera and turn a pixel into a 3D position\nPlan and execute a collision-free pick and place in MoveIt 2']],
+  links: [['Modern Robotics', 'http://hades.mech.northwestern.edu/index.php/Modern_Robotics']],
+  video: `
+## Six items to prove
+1. PID: explain every term from your measured data
+2. State space + LQR on a simulated plant
+3. FK by hand, IK numerically
+4. A singularity, pointing at your robot
+5. Calibrate a camera; pixel → 3D
+6. A collision-free pick and place in MoveIt 2
+Milestone day. Six items, each shown or explained out loud. If you are alone, record yourself; explaining to a camera is surprisingly close to explaining to an interviewer.
+Go in order, and for each one, open the project and use its plot, table or video as your prop.
+
+## How to explain each one
+| Item | Your prop | One key sentence |
+|---|---|---|
+| PID | comparison plot | "D cut overshoot from X to Y" |
+| LQR | push plot | "LQR returned the cart; PID let it drift" |
+| FK / IK | error table | "damped least squares stays sane near singularities" |
+| calibration | error + distance table | "Z = fx·W / w" |
+| MoveIt | two videos | "this stage failed because…" |
+For each item, have a prop and one key sentence ready. For PID, the plot and how much D cut overshoot. For LQR, the push plot and the drifting cart. For kinematics, the error table and why damping matters.
+For vision, the re-projection error and the depth formula. For MoveIt, both videos and which stage failed. Aim for about two minutes per item.
+
+## The singularity, in one minute
+- Pose the SO-101 fully stretched out
+- "Here the shoulder, elbow and wrist axes line up in one plane…"
+- "…so it cannot move further outward, and nearby, sideways moves need huge joint speeds"
+- "My IK solver showed it: joints spiked until I added damping"
+The article's most physical milestone: explain a singularity by pointing at a robot doing it. Pose your SO-101 fully stretched. Point at it. Explain that it cannot move further outward, and that near this pose small Cartesian moves demand huge joint speeds.
+Finish with your own evidence: your IK solver's joint spikes, and how damping fixed them. One minute, no notes.
+
+## Fix what fails
+- Shaky explanation? Rewatch that day at 1.5×, then try again
+- Missing evidence? Re-run the experiment and log the numbers
+- Tick each item on the Month 5 page as it passes
+Anything that does not pass today, fix today. A shaky explanation needs a quick rewatch and another attempt. Missing evidence needs a re-run with numbers.
+Tick each item on the Month 5 page as it passes. Tomorrow is the retro and the preview of Module 6: robot learning.
+`,
+  key: [
+    'Show or explain all six milestone items, with a prop for each.',
+    'One key sentence per item, backed by your own numbers.',
+    'Explain the singularity by pointing at the stretched-out SO-101.',
+    'Fix failing items today; tick each on the Month 5 page.'
+  ],
+  quiz: [
+    ['What is the best prop for explaining PID terms?', ['A textbook diagram', 'Your own comparison plot', 'A screenshot of RViz', 'The LeRobot docs'], 1, 'Explain from measured data.'],
+    ['Stretched fully out, what can the arm not do?', ['Rotate its base', 'Move further outward', 'Open the gripper', 'Lift its elbow'], 1, 'That is the workspace-edge singularity.']
+  ]
+});
+
+D({
+  n: 140, icon: '🏁', topic: 'Review', hours: 1.5, notion: '3f6cdfea8ce28160a421d4bfb5dfb4a6', svg: 'policy',
+  title: 'Month 5 retro + Month 6 prep',
+  goal: 'Close Month 5 and be ready to teach the arm by demonstration.',
+  tasks: [
+    'Open the Month 5 page: tick milestones, tick Milestone met, fill the Retro',
+    'Review all Month 5 days: redo or set Skipped',
+    'Check the SO-101 still teleoperates; update LeRobot to the latest version',
+    'Read the Month 6 intro below',
+    'Fill the log, Status, Hours, Confidence'
+  ],
+  read: [['Month 6 preview', 'Your goal this month: pick one direction, build a portfolio piece in it, and start applying\nYou now have the whole stack: electronics, embedded, mechanical, ROS 2, control and perception']],
+  links: [['LeRobot', 'https://github.com/huggingface/lerobot']],
+  video: `
+## Module 5 in one table
+| Section | You can now |
+|---|---|
+| PID and state space | tune and explain PID from data; write ẋ = Ax + Bu |
+| LQR and kinematics | design LQR; transforms; FK by hand |
+| Jacobians, IK and vision | numerical IK; calibrate; pixel → 3D; point clouds |
+| MoveIt 2 | plan, avoid collisions, pick and place, read failures |
+Final day of Module 5. You learned what the libraries were doing: control theory from PID to LQR, kinematics from transforms to IK, vision from calibration to point clouds, and manipulation with MoveIt.
+Write the retro on the Month 5 page and tick the milestones. Redo or skip any unfinished days.
+
+## The retro questions
+- Which topic felt hardest: control, kinematics, vision or MoveIt?
+- Which plot or table are you proudest of?
+- One thing you can do now that you could not a month ago
+- Total hours this month
+Answer four questions: the hardest topic, the artefact you are proudest of, one new ability, and your total hours.
+The hardest topic is worth a note: it may be exactly the direction to avoid for your capstone, or the one to lean into if it fascinated you.
+
+## Module 6 preview
+@svg policy | record demonstrations → train a policy → deploy it
+The Month 6 preview: pick one direction, build a portfolio piece in it, and start applying. You now have the whole stack: electronics, embedded, mechanical, ROS 2, control and perception.
+Module 6 starts with robot learning: you teleoperate the SO-101 to record demonstrations, train a policy on them, and let the arm do the task itself. Then reinforcement learning, a capstone, and interview preparation.
+
+## Get the arm ready
+\`\`\`bash
+cd lerobot && git pull
+pip install -e ".[feetech]"      # or the extras for your motors
+# then: run your teleoperation command from Module 3 and check every joint
+\`\`\`
+Practical prep: update LeRobot to the latest version, because it moves fast, and check the SO-101 still teleoperates smoothly, every joint, leader and follower.
+Check your Hugging Face login, your GPU access and your lighting. Congratulations on finishing Module 5. One module to go.
+`,
+  key: [
+    'Module 5: control, kinematics, vision and MoveIt underneath the libraries.',
+    'Retro: hardest topic, proudest artefact, a new skill, hours.',
+    'Module 6: robot learning, RL, a capstone and interviews.',
+    'Update LeRobot and check SO-101 teleoperation before starting.'
+  ],
+  quiz: [
+    ['What is the goal of Module 6, according to the preview?', ['Learn soldering', 'Pick one direction, build a portfolio piece in it, and start applying', 'Rebuild the balancer', 'Write a SLAM algorithm'], 1, 'You now have the whole stack.'],
+    ['Why update LeRobot before Module 6?', ['It is required by MoveIt', 'It changes quickly; the latest version matches current docs', 'To reset the arm', 'To remove calibration'], 1, 'Stay current with a fast-moving library.']
+  ]
+});
 // @@END
